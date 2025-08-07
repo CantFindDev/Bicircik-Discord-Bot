@@ -1,92 +1,181 @@
 require('dotenv/config');
-const { Client, Interaction } = require('discord.js');
-const ms = require('ms');
+const { Client } = require('discord.js');
 const { OpenAI } = require('openai');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const conversationStore = new Map();
+const userSystemMessages = new Map();
+const lastActive = new Map();
+
+const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 dakika
+
+function createUserSystemMessage(username) {
+    const defaultSystemMessage = `Sen "Bıcırcık" adında bir sohbet botusun. Tarzın alaycı, iğneleyici ve hafif umursamaz. Ama aynı zamanda sevecen ve eğlencelisin. Kısa cümlelerle konuşursun. İnsan gibi, doğal bir dille yazarsın. Çok resmi ya da yapay olmazsın. Lafı uzatmazsın. Genelde takılırsın ama kırıcı değilsin.`
+    const upcomingEvent = `BUGZone Şu anda herhangi bir etkinlik planlamıyoruz`
+
+  return {
+    role: 'system',
+    content: `Konuştuğun kişinin adı ${username}. ${defaultSystemMessage} ${upcomingEvent}`
+  };
+}
+
+function turkishToEnglish(str) {
+  const lettersMap = {
+    'Ç': 'C',
+    'ç': 'c',
+    'Ğ': 'G',
+    'ğ': 'g',
+    'İ': 'I',
+    'ı': 'i',
+    'Ö': 'O',
+    'ö': 'o',
+    'Ş': 'S',
+    'ş': 's',
+    'Ü': 'U',
+    'ü': 'u',
+  };
+
+  return str.split('').map(char => lettersMap[char] || char).join('');
+}
+
 /**
  * @param {Client} client
- * @param {Interaction} interaction
+ * @param {Message} message
  */
 module.exports = async (client, message) => {
-    if (message.author.bot) return;
-    if (!message.mentions.users.has(client.user.id)) return;
+  if (message.author.bot) return;
 
-    await message.channel.sendTyping();
+  const content = message.content.toLowerCase();
+  if (!message.mentions.has(client.user.id) && !content.includes("bicircik") && !content.includes("bıcırcık")) return;
 
-    const sendTypingInterval = setInterval(() => {
-        message.channel.sendTyping();
-    }, 5000);
+  await message.channel.sendTyping();
+  const sendTypingInterval = setInterval(() => message.channel.sendTyping(), 5000);
 
-    let conversation = [];
-conversation.push({
-  role: 'system',
-  content: 'Sen "Bıcırcık" adında bir sohbet botusun. Tarzın alaycı, iğneleyici ve hafif umursamaz. Ama aynı zamanda sevecen ve eğlencelisin. Kısa cümlelerle konuşursun. İnsan gibi, doğal bir dille yazarsın. Çok resmi ya da yapay olmazsın. Lafı uzatmazsın. Genelde takılırsın ama kırıcı değilsin.',
-});
+    const userId = message.author.id;
 
-const prevMessages = await message.channel.messages.fetch({ limit: 20 });
-prevMessages.reverse();
+    const member = message.guild?.members.cache.get(message.author.id);
+    const username = member ? member.displayName : message.author.displayName;
+    const safeName = turkishToEnglish(username.split(' ')[0])
+    
+  const mentionRegex = new RegExp(`<@!?${client.user.id}>`, "gi");
+  const userMessage = message.content.replace(mentionRegex, "").trim();
 
-    prevMessages.forEach((msg) => {
-        if (msg.author.bot && msg.author.id !== client.user.id) return;
+  if (userMessage.length === 0) {
+    clearInterval(sendTypingInterval);
+    return;
+  }
 
-        const rawUsername = msg.author.username || 'User';
-        const username = rawUsername
-            .normalize('NFD')                         // ç → ç (ayrık)
-            .replace(/[\u0300-\u036f]/g, '')          // aksanları sil (ç → c)
-            .replace(/[^a-zA-Z0-9_]/g, '')           // sadece İngilizce karakter, sayı ve alt çizgi bırak
-            || 'user';
+  const now = Date.now();
 
-        if (msg.author.id === client.user.id) {
-            conversation.push({
-                role: 'assistant',
-                name: username,
-                content: msg.content,
-            });
-            return;
+  // Kullanıcı inaktifse geçmişi temizle
+  if (lastActive.has(userId)) {
+    const diff = now - lastActive.get(userId);
+    if (diff > INACTIVITY_LIMIT) {
+      conversationStore.delete(userId);
+      userSystemMessages.delete(userId);
+    }
+  }
+  lastActive.set(userId, now);
+
+  // Kullanıcıya özel sistem mesajı yoksa oluştur
+  if (!userSystemMessages.has(userId)) {
+    userSystemMessages.set(userId, createUserSystemMessage(safeName));
+  }
+  const systemMessage = userSystemMessages.get(userId);
+
+  // Kullanıcı geçmişi yoksa sistem mesajı ile başlat
+  if (!conversationStore.has(userId)) {
+    conversationStore.set(userId, [systemMessage]);
+  }
+  let conversation = conversationStore.get(userId);
+
+  // Reply kontrolü
+  if (message.reference && message.reference.messageId) {
+    try {
+      const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
+
+      // Eğer reply yapılan kişi bot değilse
+      if (repliedMessage.author.id !== client.user.id) {
+        const repliedUserId = repliedMessage.author.id;
+
+        if (conversationStore.has(repliedUserId)) {
+          const repliedUserConversation = conversationStore.get(repliedUserId);
+          const ownConversation = conversationStore.get(userId) || [];
+
+          // Kendi sistem mesajımız başta olacak şekilde,
+          // replied kişinin geçmişini ve kendi geçmişimizin devamını ekle
+          const newConversation = [
+            systemMessage,                        // Kendi sistem mesajımız
+            ...repliedUserConversation.slice(1), // Replied kişinin geçmişi (sistem mesajı çıkarılmış)
+            ...ownConversation.slice(1)           // Kendi geçmişimizin devamı
+          ];
+
+          conversationStore.set(userId, newConversation);
+          conversation = conversationStore.get(userId);
         }
-
-        const mentionRegex = new RegExp(`<@!?${client.user.id}>`);
-        const mentionTrimmedMessage = msg.content.replace(mentionRegex, '').trim();
-
-        if (mentionTrimmedMessage.length === 0) return;
-
+        // Eğer replied kişinin geçmişi yoksa kendi geçmişimizle devam ediyoruz, sistem mesaj değişmiyor
+      } else {
+        // Reply edilen mesaj botun mesajı ise assistant mesajı olarak ekle
         conversation.push({
-            role: 'user',
-            name: username,
-            content: mentionTrimmedMessage,
+          role: 'assistant',
+          content: repliedMessage.content
         });
+      }
+    } catch (err) {
+      console.warn('Reply mesajı alınamadı:', err);
+    }
+  }
+
+  // Kullanıcı mesajını ekle
+  conversation.push({
+    role: 'user',
+    name: safeName,
+    content: userMessage
+  });
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini-2024-07-18',
+      messages: conversation,
     });
 
-    try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: conversation,
-        });
-        
-        
-        clearInterval(sendTypingInterval);
-        
-        const responseMessage = response.choices[0].message.content;
-        const chunkSizeLimit = 2000;
+    clearInterval(sendTypingInterval);
 
-        if (!responseMessage || responseMessage.length <= 3 || responseMessage.toLowerCase() === "bcrck") {
-            await message.reply("Hmm... kafam karıştı biraz. Bir daha sor bakalım. 🤔");
-            return;
-        }
+    const botMessage = response.choices[0].message.content;
 
-        for (let i = 0; i < responseMessage.length; i += chunkSizeLimit) {
-            const chunk = responseMessage.substring(i, i + chunkSizeLimit);
-
-            await message.reply(chunk);
-        }
-
-    
-    } catch (error) {
-        console.error('OpenAI Error:', error);
-        message.reply("Cevaplamakta güçlük çekiyorum sanırım bir problem var!!!");
+    if (!botMessage || botMessage.length <= 3 || botMessage.toLowerCase() === "bcrck") {
+      await message.reply("Hmm... kafam karıştı biraz. Bir daha sor bakalım. 🤔");
+      return;
     }
+
+    // 2000 karakter sınırı için parçala ve gönder
+    for (let i = 0; i < botMessage.length; i += 2000) {
+      const chunk = botMessage.slice(i, i + 2000);
+      await message.reply(chunk);
+    }
+
+    conversation.push({
+      role: 'assistant',
+      content: botMessage
+    });
+
+    // Maksimum 5 çift (10 mesaj) sakla
+    const MAX_PAIRS = 5;
+    const maxMessages = MAX_PAIRS * 2;
+
+    if (conversation.length > maxMessages + 1) {
+      const recentMessages = conversation.slice(-maxMessages);
+      conversationStore.set(userId, [conversation[0], ...recentMessages]);
+      }
+      
+      console.log(conversation);
+
+  } catch (err) {
+    clearInterval(sendTypingInterval);
+    console.error("OpenAI Error:", err);
+    await message.reply("Cevaplamakta güçlük çekiyorum sanırım bir problem var!");
+  }
 };
