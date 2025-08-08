@@ -2,7 +2,7 @@ const { Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits } =
 
 module.exports = {
     name: 'ban',
-    description: "Sunucudan bir kullanıcıyı tamamen atar.",
+    description: "Sunucudan bir kullanıcıyı tamamen atar!",
     options: [
         {
             name: 'hedef-kullanıcı',

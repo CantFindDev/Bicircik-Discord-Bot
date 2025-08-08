@@ -1,4 +1,4 @@
-const {testGuild} = require('../../../config.json');
+const { testGuild, mainGuild } = require('../../../config.json');
 const getApplicationCommands = require('../../utils/getApplicationCommands');
 const getLocalCommands = require('../../utils/getLocalCommands');
 const checkCommandDiffirience = require('../../utils/checkCommandDiffirience');
@@ -6,47 +6,109 @@ const checkCommandDiffirience = require('../../utils/checkCommandDiffirience');
 module.exports = async (client) => {
     try {
         const localCommands = getLocalCommands();
-        const applicationCommands = await getApplicationCommands(client);
+
+        const globalCommands = await getApplicationCommands(client);
+        const testCommands = await getApplicationCommands(client, testGuild);
+        const mainCommands = await getApplicationCommands(client, mainGuild);
 
         for (const localCommand of localCommands) {
-            const { name, description, options } = localCommand;
+            const { name, description, options, testOnly, mainOnly, deleted } = localCommand;
 
-            const existingCommand = await applicationCommands.cache.find((cmd) => cmd.name === name);
+            const existingGlobal = globalCommands.cache.find(cmd => cmd.name === name);
+            const existingTest = testCommands.cache.find(cmd => cmd.name === name);
+            const existingMain = mainCommands.cache.find(cmd => cmd.name === name);
 
-            if (existingCommand) {
-                if (localCommand.deleted) {
-                    await applicationCommands.delete(existingCommand.id);
-                    console.log(`🗑️ Deleted command ${name}.`)
-                    continue;
+            // 🚫 Deleted from everywhere
+            if (deleted) {
+                if (existingGlobal) {
+                    await globalCommands.delete(existingGlobal.id);
+                    console.log(`🗑️ Deleted global command: ${name}`);
                 }
-
-                if (checkCommandDiffirience(existingCommand, localCommand)) {
-                    await applicationCommands.edit(existingCommand.id, {
-                        description,
-                        options,
-                    });
-                    
-                    console.log(`🔄 Edited command ${name}.`)
+                if (existingTest) {
+                    await testCommands.delete(existingTest.id);
+                    console.log(`🗑️ Deleted test command: ${name}`);
                 }
+                if (existingMain) {
+                    await mainCommands.delete(existingMain.id);
+                    console.log(`🗑️ Deleted main command: ${name}`);
+                }
+                continue;
             }
 
-            else {
-                if (localCommand.deleted) {
-                    console.log(`🛡️ The command ${name} will not be registered since it is tagged as deleted`)
-                    continue;
+            if (testOnly && mainOnly) {
+                console.warn(`⚠️ Command "${name}" cannot be both testOnly and mainOnly. Skipping...`);
+                continue;
+            }
+
+            // 🧪 Test guild only
+            if (testOnly) {
+                if (existingTest) {
+                    if (checkCommandDiffirience(existingTest, localCommand)) {
+                        await testCommands.edit(existingTest.id, { description, options });
+                        console.log(`🔄 Edited test command: ${name}`);
+                    }
+                } else {
+                    await testCommands.create({ name, description, options });
+                    console.log(`⚙️ Created test command: ${name}`);
                 }
 
-                await applicationCommands.create({
-                    name,
-                    description,
-                    options,
-                })
+                if (existingGlobal) {
+                    await globalCommands.delete(existingGlobal.id);
+                    console.log(`🗑️ Removed global duplicate of test command: ${name}`);
+                }
+                if (existingMain) {
+                    await mainCommands.delete(existingMain.id);
+                    console.log(`🗑️ Removed main duplicate of test command: ${name}`);
+                }
+                continue;
+            }
 
-                console.log(`🛠️ The command ${name} has been registered`);
+            // 🏠 Main guild only
+            if (mainOnly) {
+                if (existingMain) {
+                    if (checkCommandDiffirience(existingMain, localCommand)) {
+                        await mainCommands.edit(existingMain.id, { description, options });
+                        console.log(`🔄 Edited main command: ${name}`);
+                    }
+                } else {
+                    await mainCommands.create({ name, description, options });
+                    console.log(`⚙️ Created main command: ${name}`);
+                }
+
+                if (existingGlobal) {
+                    await globalCommands.delete(existingGlobal.id);
+                    console.log(`🗑️ Removed global duplicate of main command: ${name}`);
+                }
+                if (existingTest) {
+                    await testCommands.delete(existingTest.id);
+                    console.log(`🗑️ Removed test duplicate of main command: ${name}`);
+                }
+                continue;
+            }
+
+            // 🌍 Global command
+            if (existingGlobal) {
+                if (checkCommandDiffirience(existingGlobal, localCommand)) {
+                    await globalCommands.edit(existingGlobal.id, { description, options });
+                    console.log(`🔄 Edited global command: ${name}`);
+                }
+            } else {
+                await globalCommands.create({ name, description, options });
+                console.log(`🛠️ Created global command: ${name}`);
+            }
+
+            // Clean up guild duplicates
+            if (existingTest) {
+                await testCommands.delete(existingTest.id);
+                console.log(`🗑️ Removed test duplicate of global command: ${name}`);
+            }
+            if (existingMain) {
+                await mainCommands.delete(existingMain.id);
+                console.log(`🗑️ Removed main duplicate of global command: ${name}`);
             }
         }
 
     } catch (error) {
-        console.log(`There was an error: ${error}`)
+        console.error(`❌ Error while syncing commands:`, error);
     }
-}
+};

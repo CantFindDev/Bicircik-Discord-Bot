@@ -1,7 +1,7 @@
 const {Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
-    name: 'delete-channel',
+    name: 'deletechannel',
     description: 'Delete channel',
     options: [
             {
@@ -14,7 +14,7 @@ module.exports = {
 
     permissionsRequired: [PermissionFlagsBits.ManageChannels],
     botPermissions: [PermissionFlagsBits.ManageChannels],
-
+    
     /**
      * @param {Client} client
      * @param {Interaction} interaction

@@ -11,6 +11,5 @@ module.exports = async (client, guildID) =>
     }
 
     await applicationCommands.fetch();
-
     return applicationCommands;
 }

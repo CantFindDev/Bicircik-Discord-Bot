@@ -1,7 +1,7 @@
 const {Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits,EmbedBuilder } = require('discord.js');
 
 module.exports = {
-    name: 'send-embed',
+    name: 'sendembed',
     description: 'Just to test the command system',
     options: [
             {
@@ -155,7 +155,7 @@ module.exports = {
             },
         ],
     
-    testOnly: true,
+    testOnly: false,
     devOnly: true,
     deleted: false,
 

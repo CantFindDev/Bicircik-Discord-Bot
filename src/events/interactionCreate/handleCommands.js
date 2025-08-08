@@ -1,7 +1,12 @@
 
 const getLocalCommands = require('../../utils/getLocalCommands');
 const { developers, testGuild } = require('../../../config.json');
+const { Client, Interaction } = require('discord.js');
 
+/**
+ * @param {Client} client
+ * @param {Interaction} interaction
+ */
 module.exports = async (client,interaction) => {
 
     if (!interaction.isChatInputCommand()) return;
@@ -12,6 +17,14 @@ module.exports = async (client,interaction) => {
         const commandObject = localCommands.find((cmd) => cmd.name === interaction.commandName);
 
         if (!commandObject) return;
+
+        if (!interaction.inGuild()) {
+            interaction.reply({
+                content: "You can't run commands out of the server",
+                ephemeral: true,
+            })
+            return;
+        }
 
         if (commandObject.devOnly) {
             if (!developers.includes(interaction.member.id)) {

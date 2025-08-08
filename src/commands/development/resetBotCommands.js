@@ -1,49 +1,67 @@
-const { Client,Interaction,ApplicationCommandOptionType, PermissionFlagsBits } = require('discord.js');
+const { Client, Interaction } = require('discord.js');
 const { REST, Routes } = require('discord.js');
-const { botID } = require('../../../config.json');
+const { botID, testGuild, mainGuild } = require('../../../config.json');
 require("dotenv").config();
 
 module.exports = {
     name: 'resetbotcommands',
-    description: 'This command resets all bot commands',
-     options: [
-            {
-                name: 'target-command-id',
-                description: 'Target command ID',
-                required: false,
-                type: ApplicationCommandOptionType.Mentionable,
-            }
-    ],
-     
-    testOnly: false,
+    description: 'Deletes ALL commands globally and in test/main guilds.',
+    options: [],
     devOnly: true,
+    testOnly: true,
     deleted: true,
 
-
-     /**
+    /**
      * @param {Client} client
      * @param {Interaction} interaction
      */
-    callback: (client, interaction) => {
-        const rest = new REST().setToken(process.env.BOT_TOKEN);
-        const targetCommandID = interaction.options.get("target-command-ID")?.value || "0";
-        
-1402418751818830014
+    callback: async (client, interaction) => {
+        await interaction.deferReply({ ephemeral: true });
 
-        if (targetCommandID === "0") {
-            rest.put(Routes.applicationCommands(botID), { body: [] })
-                .then(() => console.log('Successfully deleted all application commands.'))
-                .catch(console.error);
+        const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
+        const successMessages = [];
+
+        // Internal helper for deleting commands from a specific scope
+        async function deleteCommands(scopeName, routeFn) {
+            try {
+                const commands = await rest.get(routeFn());
+                for (const command of commands) {
+                    await rest.delete(routeFn(command.id));
+                    successMessages.push(`🗑️ Deleted ${scopeName} command: ${command.name}`);
+                }
+            } catch (err) {
+                successMessages.push(`⚠️ Failed to delete ${scopeName} commands: ${err.message}`);
+                console.error(`Error deleting ${scopeName} commands:`, err);
+            }
         }
-        else {
-            rest.delete(Routes.applicationGuildCommand(botID, interaction.guildId, targetCommandID))
-                .then(() => console.log('Successfully deleted guild commands.'))
-                .catch(console.error);
+
+        // Delete global commands
+        await deleteCommands("global", (id) =>
+            id
+                ? Routes.applicationCommand(botID, id)
+                : Routes.applicationCommands(botID)
+        );
+
+        // Delete test guild commands
+        if (testGuild) {
+            await deleteCommands("testGuild", (id) =>
+                id
+                    ? Routes.applicationGuildCommand(botID, testGuild, id)
+                    : Routes.applicationGuildCommands(botID, testGuild)
+            );
         }
-        
-        interaction.reply({
-            content: 'All bot commands have been reset successfully.',
-            ephemeral: true
+
+        // Delete main guild commands
+        if (mainGuild) {
+            await deleteCommands("mainGuild", (id) =>
+                id
+                    ? Routes.applicationGuildCommand(botID, mainGuild, id)
+                    : Routes.applicationGuildCommands(botID, mainGuild)
+            );
+        }
+
+        await interaction.editReply({
+            content: `✅ Application command reset completed.\n\n` + successMessages.join('\n'),
         });
-    }
-}
+    },
+};
