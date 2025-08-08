@@ -1,5 +1,5 @@
 const { Client, Message } = require('discord.js');
-const Level = require('../../models/level');
+const levelSchema = require('../../models/levelSchema');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
 const cooldowns = new Set();
 
@@ -24,7 +24,7 @@ module.exports = async (client, message) => {
     }
 
     try {
-        const level = await Level.findOne(query);
+        const level = await levelSchema.findOne(query);
 
         if (level) {
             level.xp += xpToGive;
@@ -42,7 +42,7 @@ module.exports = async (client, message) => {
             });
         }
         else {
-            const newLevel = new Level({
+            const newLevel = new levelSchema({
                 userID: message.author.id,
                 guildID: message.guild.id,
                 xp: xpToGive

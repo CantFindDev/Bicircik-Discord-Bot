@@ -1,5 +1,5 @@
 const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
-const Level = require('../../models/level')
+const levelSchema = require('../../models/levelSchema')
 const canvacord = require('canvacord');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
 
@@ -25,7 +25,7 @@ module.exports = {
         const targetUserID = mentionUserID || interaction.member.id;
         const targetUserObj = await interaction.guild.members.fetch(targetUserID);
 
-        const fetchedLevel = await Level.findOne({
+        const fetchedLevel = await levelSchema.findOne({
             userID: targetUserID,
             guildID: interaction.guild.id,
         })
@@ -37,7 +37,7 @@ module.exports = {
             return;
         }
 
-        let allLevels = await Level.find({ guild: interaction.guild.id }).select('-_id userID level xp');
+        let allLevels = await levelSchema.find({ guild: interaction.guild.id }).select('-_id userID level xp');
         allLevels.sort((a, b) => {
             if (a.level === b.level) return b.xp - a.xp;
             return b.level - a.level;
