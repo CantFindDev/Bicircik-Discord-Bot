@@ -4,7 +4,6 @@ module.exports = {
     name: 'kayit',
     description: 'Kayit olmak için',
 
-    permissionsRequired: [PermissionFlagsBits.ManageNicknames],
     botPermissions: [PermissionFlagsBits.ManageNicknames],
 
     /**
@@ -13,22 +12,24 @@ module.exports = {
      */
     callback: async (client, interaction) => {
         try {
-            const modal = new ModalBuilder({
-                customId: `modal-${interaction.user.id}`,
-                title: 'Kayıt Formu'
-            });
 
-            const nameInput = new TextInputBuilder({
-                customId: 'nameInput',
-                label: "Lütfen adınızı giriniz",
-                style: TextInputStyle.Short,
-            });
-
-            const surnameInput = new TextInputBuilder({
-                customId: 'surnameInput',
-                label: "Lütfen soyadınızı giriniz",
-                style: TextInputStyle.Short,
-            });
+            const modal = new ModalBuilder()
+                .setTitle('Kayıt Formu')
+                .setCustomId(`modal-${interaction.user.id}`)
+        
+            const nameInput = new TextInputBuilder()
+                .setCustomId('nameInput')
+                .setRequired(true)
+                .setPlaceholder('John')
+                .setLabel('Lütfen adınızı giriniz')
+                .setStyle(TextInputStyle.Short);
+        
+            const surnameInput = new TextInputBuilder()
+                .setCustomId('surnameInput')
+                .setRequired(false)
+                .setPlaceholder('Doe')
+                .setLabel('Lütfen soyadınızı giriniz')
+                .setStyle(TextInputStyle.Short);
 
             const firstActionRow = new ActionRowBuilder().addComponents(nameInput);
             const secondActionRow = new ActionRowBuilder().addComponents(surnameInput);

@@ -2,12 +2,18 @@ const { Guild } = require('discord.js');
 const { Schema, model } = require('mongoose');
 
 let ticketSchema = new Schema({
-    Guild: {
+    guildID: {
+        type: String,
+        required: true,
+    },
+    category: {
         type: String,
         required: true
     },
-    Category: {
+    transcriptsChannel: {
         type: String,
         required: true
-    },
+    }
 });
+
+module.exports = model('ticket', ticketSchema);

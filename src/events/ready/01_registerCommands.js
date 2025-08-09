@@ -4,111 +4,152 @@ const getLocalCommands = require('../../utils/getLocalCommands');
 const checkCommandDiffirience = require('../../utils/checkCommandDiffirience');
 
 module.exports = async (client) => {
+  const logs = [];
+
+  async function safeDelete(commandsManager, commandId, commandName, scopeName = "", isSilent = false) {
     try {
-        const localCommands = getLocalCommands();
-
-        const globalCommands = await getApplicationCommands(client);
-        const testCommands = await getApplicationCommands(client, testGuild);
-        const mainCommands = await getApplicationCommands(client, mainGuild);
-
-        for (const localCommand of localCommands) {
-            const { name, description, options, testOnly, mainOnly, deleted } = localCommand;
-
-            const existingGlobal = globalCommands.cache.find(cmd => cmd.name === name);
-            const existingTest = testCommands.cache.find(cmd => cmd.name === name);
-            const existingMain = mainCommands.cache.find(cmd => cmd.name === name);
-
-            // 🚫 Deleted from everywhere
-            if (deleted) {
-                if (existingGlobal) {
-                    await globalCommands.delete(existingGlobal.id);
-                    console.log(`🗑️ Deleted global command: ${name}`);
-                }
-                if (existingTest) {
-                    await testCommands.delete(existingTest.id);
-                    console.log(`🗑️ Deleted test command: ${name}`);
-                }
-                if (existingMain) {
-                    await mainCommands.delete(existingMain.id);
-                    console.log(`🗑️ Deleted main command: ${name}`);
-                }
-                continue;
-            }
-
-            if (testOnly && mainOnly) {
-                console.warn(`⚠️ Command "${name}" cannot be both testOnly and mainOnly. Skipping...`);
-                continue;
-            }
-
-            // 🧪 Test guild only
-            if (testOnly) {
-                if (existingTest) {
-                    if (checkCommandDiffirience(existingTest, localCommand)) {
-                        await testCommands.edit(existingTest.id, { description, options });
-                        console.log(`🔄 Edited test command: ${name}`);
-                    }
-                } else {
-                    await testCommands.create({ name, description, options });
-                    console.log(`⚙️ Created test command: ${name}`);
-                }
-
-                if (existingGlobal) {
-                    await globalCommands.delete(existingGlobal.id);
-                    console.log(`🗑️ Removed global duplicate of test command: ${name}`);
-                }
-                if (existingMain) {
-                    await mainCommands.delete(existingMain.id);
-                    console.log(`🗑️ Removed main duplicate of test command: ${name}`);
-                }
-                continue;
-            }
-
-            // 🏠 Main guild only
-            if (mainOnly) {
-                if (existingMain) {
-                    if (checkCommandDiffirience(existingMain, localCommand)) {
-                        await mainCommands.edit(existingMain.id, { description, options });
-                        console.log(`🔄 Edited main command: ${name}`);
-                    }
-                } else {
-                    await mainCommands.create({ name, description, options });
-                    console.log(`⚙️ Created main command: ${name}`);
-                }
-
-                if (existingGlobal) {
-                    await globalCommands.delete(existingGlobal.id);
-                    console.log(`🗑️ Removed global duplicate of main command: ${name}`);
-                }
-                if (existingTest) {
-                    await testCommands.delete(existingTest.id);
-                    console.log(`🗑️ Removed test duplicate of main command: ${name}`);
-                }
-                continue;
-            }
-
-            // 🌍 Global command
-            if (existingGlobal) {
-                if (checkCommandDiffirience(existingGlobal, localCommand)) {
-                    await globalCommands.edit(existingGlobal.id, { description, options });
-                    console.log(`🔄 Edited global command: ${name}`);
-                }
-            } else {
-                await globalCommands.create({ name, description, options });
-                console.log(`🛠️ Created global command: ${name}`);
-            }
-
-            // Clean up guild duplicates
-            if (existingTest) {
-                await testCommands.delete(existingTest.id);
-                console.log(`🗑️ Removed test duplicate of global command: ${name}`);
-            }
-            if (existingMain) {
-                await mainCommands.delete(existingMain.id);
-                console.log(`🗑️ Removed main duplicate of global command: ${name}`);
-            }
-        }
-
+      await commandsManager.delete(commandId);
+      if (!isSilent) logs.push(`🗑️ Deleted ${scopeName} command: ${commandName}`);
     } catch (error) {
-        console.error(`❌ Error while syncing commands:`, error);
+      if (error.code === 10063) {
+        logs.push(`ℹ️ ${scopeName} command already deleted or not found: ${commandName}`);
+      } else {
+        throw error;
+      }
     }
+  }
+
+  try {
+    const localCommands = getLocalCommands();
+
+    // Fetch current commands from all scopes
+    const globalCommands = await getApplicationCommands(client);
+    const testCommands = await getApplicationCommands(client, testGuild);
+    const mainCommands = await getApplicationCommands(client, mainGuild);
+
+    // Create maps for quick lookup of existing commands by name
+    const existingGlobalMap = new Map(globalCommands.cache.map(cmd => [cmd.name, cmd]));
+    const existingTestMap = new Map(testCommands.cache.map(cmd => [cmd.name, cmd]));
+    const existingMainMap = new Map(mainCommands.cache.map(cmd => [cmd.name, cmd]));
+
+    // For tracking which commands should exist in which scopes after sync
+    const shouldExistTest = new Set();
+    const shouldExistMain = new Set();
+    const shouldExistGlobal = new Set();
+
+    // First, iterate all local commands and add/edit them appropriately
+    for (const localCommand of localCommands) {
+      const { name, description, options, testOnly, mainOnly, deleted, memberPermissions } = localCommand;
+
+      const default_member_permissions = Array.isArray(memberPermissions) && memberPermissions.length > 0
+        ? memberPermissions.reduce((acc, perm) => acc | BigInt(perm), 0n).toString()
+        : null;
+
+      if (deleted) {
+        // Delete from all scopes if exists
+        if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
+        if (existingTestMap.has(name)) await safeDelete(testCommands, existingTestMap.get(name).id, name, "Test");
+        if (existingMainMap.has(name)) await safeDelete(mainCommands, existingMainMap.get(name).id, name, "Main");
+
+        continue;
+      }
+
+      if (testOnly === true && mainOnly === true) {
+        logs.push(`⚠️ Command "${name}" cannot be both testOnly and mainOnly. Skipping...`);
+        continue;
+      }
+
+      if (testOnly === true) {
+        shouldExistTest.add(name);
+        const existingTest = existingTestMap.get(name);
+        if (existingTest) {
+          const differs = checkCommandDiffirience(existingTest, localCommand);
+          if (differs) {
+            await testCommands.edit(existingTest.id, { description, options, default_member_permissions });
+            logs.push(`🔄 Edited Test command: ${name}`);
+          } else {
+            logs.push(`✅ Test command "${name}" is up to date. No edit needed.`);
+          }
+        } else {
+          await testCommands.create({ name, description, options, default_member_permissions });
+          logs.push(`⚙️ Created Test command: ${name}`);
+        }
+        // Ensure deleted from other scopes
+        if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
+        if (existingMainMap.has(name)) await safeDelete(mainCommands, existingMainMap.get(name).id, name, "Main");
+
+        continue;
+      }
+
+      if (mainOnly === true) {
+        shouldExistMain.add(name);
+        const existingMain = existingMainMap.get(name);
+        if (existingMain) {
+          const differs = checkCommandDiffirience(existingMain, localCommand);
+          if (differs) {
+            await mainCommands.edit(existingMain.id, { description, options, default_member_permissions });
+            logs.push(`🔄 Edited Main command: ${name}`);
+          } else {
+            logs.push(`✅ Main command "${name}" is up to date. No edit needed.`);
+          }
+        } else {
+          await mainCommands.create({ name, description, options, default_member_permissions });
+          logs.push(`⚙️ Created Main command: ${name}`);
+        }
+        // Ensure deleted from other scopes
+        if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
+        if (existingTestMap.has(name)) await safeDelete(testCommands, existingTestMap.get(name).id, name, "Test");
+
+        continue;
+      }
+
+      // Global command case
+      shouldExistGlobal.add(name);
+      const existingGlobal = existingGlobalMap.get(name);
+      if (existingGlobal) {
+        const differs = checkCommandDiffirience(existingGlobal, localCommand);
+        if (differs) {
+          await globalCommands.edit(existingGlobal.id, { description, options, default_member_permissions });
+          logs.push(`🔄 Edited Global command: ${name}`);
+        } else {
+          logs.push(`✅ Global command "${name}" is up to date. No edit needed.`);
+        }
+      } else {
+        await globalCommands.create({ name, description, options, default_member_permissions });
+        logs.push(`🛠️ Created Global command: ${name}`);
+      }
+    }
+
+    // Now remove duplicates after full processing
+
+    // Remove Test commands that should not exist (not testOnly)
+    for (const [name, cmd] of existingTestMap) {
+      if (!shouldExistTest.has(name)) {
+        await safeDelete(testCommands, cmd.id, name,"Test",true);
+        logs.push(`🗑️ Removed Test duplicate of command: ${name}`);
+      }
+    }
+
+    // Remove Main commands that should not exist (not mainOnly)
+    for (const [name, cmd] of existingMainMap) {
+      if (!shouldExistMain.has(name)) {
+        await safeDelete(mainCommands, cmd.id, name,"Main",true);
+        logs.push(`🗑️ Removed Main duplicate of command: ${name}`);
+      }
+    }
+
+    // Optionally, remove Global commands that should not exist
+    for (const [name, cmd] of existingGlobalMap) {
+      if (!shouldExistGlobal.has(name)) {
+        await safeDelete(globalCommands, cmd.id, name,"Global",true);
+        logs.push(`🗑️ Removed Global duplicate of command: ${name}`);
+      }
+    }
+
+  } catch (error) {
+    logs.push(`❌ Error while syncing commands: ${error.message}`);
+  }
+
+  logs.forEach(log => console.log(log));
+  return logs;
 };

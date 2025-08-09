@@ -1,5 +1,5 @@
 const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
-const levelSchema = require('../../models/levelSchema')
+const levelSchema = require('../../schemas/levelSchema')
 const canvacord = require('canvacord');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
 

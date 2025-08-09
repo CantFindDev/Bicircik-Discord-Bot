@@ -46,16 +46,12 @@ module.exports = async (client,interaction) => {
             }
         }
 
-        if (commandObject.permissionsRequired?.lenght) {
-            for (const permission of commandObject.permissionsRequired) {
-                if (!interaction.member.permissions.has(permission)) {
-                    interaction.reply({
-                        content: 'You do not have enough permissions.',
-                        ephemeral: true,
-                    });
-                    break;
-                }
-            }
+        const requiredPerms = BigInt(commandObject.default_member_permissions || '0');
+        if (!interaction.member.permissions.has(requiredPerms)) {
+            return interaction.reply({
+                content: 'You do not have permission to use this command.',
+                ephemeral: true
+            });
         }
 
         if (commandObject.botPermissions?.lenght) {
@@ -64,11 +60,23 @@ module.exports = async (client,interaction) => {
 
                 if (!bot.permissions.has(permission)) {
                      interaction.reply({
-                        content: 'I do not have enough permissions.',
+                        content: `I don't have enough permissions.`,
                         ephemeral: true,
                      });
                     break;
                 }
+            }
+        }
+
+        const subcommand = interaction.options.getSubcommand(false);
+        if (commandObject.subcommand_permissions?.[subcommand]) {
+            const requiredPerms = BigInt(commandObject.subcommand_permissions[subcommand]);
+
+            if (!interaction.member.permissions.has(requiredPerms)) {
+                return interaction.reply({
+                    content: `You need additional permissions to run \`${subcommand}\`.`,
+                    ephemeral: true
+                });
             }
         }
 

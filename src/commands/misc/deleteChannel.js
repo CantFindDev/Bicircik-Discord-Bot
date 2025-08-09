@@ -3,6 +3,10 @@ const {Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits } = 
 module.exports = {
     name: 'deletechannel',
     description: 'Delete channel',
+
+    memberPermissions: [PermissionFlagsBits.ManageChannels],
+    botPermissions: [PermissionFlagsBits.ManageChannels],
+
     options: [
             {
                 name: 'target-channel',
@@ -11,9 +15,6 @@ module.exports = {
                 type: ApplicationCommandOptionType.Channel,
             }
     ],
-
-    permissionsRequired: [PermissionFlagsBits.ManageChannels],
-    botPermissions: [PermissionFlagsBits.ManageChannels],
     
     /**
      * @param {Client} client

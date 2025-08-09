@@ -4,6 +4,10 @@ const ms = require('ms');
 module.exports = {
     name: 'timeout',
     description: 'Kullanıcıyı belirli bir süreliğine susturur.',
+
+    memberPermissions: [PermissionFlagsBits.MuteMembers],
+    botPermissions: [PermissionFlagsBits.MuteMembers],
+
     options: [
             {
                 name: 'hedef-kullanıcı',
@@ -24,10 +28,6 @@ module.exports = {
                 type: ApplicationCommandOptionType.String,
             }
     ],
-
-
-    permissionsRequired: [PermissionFlagsBits.MuteMembers],
-    botPermissions: [PermissionFlagsBits.MuteMembers],
 
     /**
      * @param {Client} client

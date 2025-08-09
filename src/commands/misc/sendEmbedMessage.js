@@ -1,8 +1,12 @@
-const {Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits,EmbedBuilder } = require('discord.js');
+const {Client,ChannelType,Interaction, ApplicationCommandOptionType,PermissionFlagsBits,EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: 'sendembed',
     description: 'Just to test the command system',
+
+    memberPermissions: [PermissionFlagsBits.Administrator],
+    botPermissions: [PermissionFlagsBits.Administrator],
+
     options: [
             {
                 name: 'title',
@@ -33,6 +37,7 @@ module.exports = {
                 description: 'channel where the embed will be sent!',
                 required: false,
                 type: ApplicationCommandOptionType.Channel,
+                channel_types: [ChannelType.GuildText],
             },
             {
                 name: 'url',
@@ -154,13 +159,6 @@ module.exports = {
                 ]
             },
         ],
-    
-    testOnly: false,
-    devOnly: true,
-    deleted: false,
-
-    permissionsRequired: [PermissionFlagsBits.Administrator],
-    botPermissions: [PermissionFlagsBits.Administrator],
 
     /**
      * @param {Client} client

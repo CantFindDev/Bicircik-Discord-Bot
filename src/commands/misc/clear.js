@@ -3,6 +3,10 @@ const {Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits,Guil
 module.exports = {
     name: 'clear',
     description: 'Clears amount of chat you provide hepsi yazılırsa bütün mesajlar silinir',
+
+    memberPermissions: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages],
+    botPermissions: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages],
+    
     options: [
         {
             name: 'amount',
@@ -11,9 +15,6 @@ module.exports = {
             type: ApplicationCommandOptionType.String,
         }
     ],
-
-    permissionsRequired: [PermissionFlagsBits.ManageChannels,PermissionFlagsBits.ManageMessages],
-    botPermissions: [PermissionFlagsBits.ManageChannels,PermissionFlagsBits.ManageMessages],
 
     /**
      * @param {Client} client

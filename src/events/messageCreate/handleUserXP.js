@@ -1,5 +1,5 @@
 const { Client, Message } = require('discord.js');
-const levelSchema = require('../../models/levelSchema');
+const levelSchema = require('../../schemas/levelSchema');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
 const cooldowns = new Set();
 

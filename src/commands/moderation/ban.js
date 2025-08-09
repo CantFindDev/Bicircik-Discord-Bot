@@ -3,6 +3,10 @@ const { Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits } =
 module.exports = {
     name: 'ban',
     description: "Sunucudan bir kullanıcıyı tamamen atar!",
+
+    memberPermissions: [PermissionFlagsBits.BanMembers],
+    botPermissions: [PermissionFlagsBits.BanMembers],
+
     options: [
         {
             name: 'hedef-kullanıcı',
@@ -16,10 +20,7 @@ module.exports = {
             type: ApplicationCommandOptionType.String,
         }
     ],
-
-    permissionsRequired: [PermissionFlagsBits.BanMembers],
-    botPermissions: [PermissionFlagsBits.BanMembers],
-
+    
     /**
      * @param {Client} client
      * @param {Interaction} interaction

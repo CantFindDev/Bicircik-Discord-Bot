@@ -3,6 +3,19 @@ const {Client,ChannelType,Interaction, ApplicationCommandOptionType,PermissionFl
 module.exports = {
     name: 'template',
     description: 'Just to test the command system',
+
+    //comment or delete the following lines to disable development flags
+    testOnly: true,
+    devOnly: true,
+    deleted: true,
+    mainOnly: true,
+
+    memberPermissions: [PermissionFlagsBits.Administrator],
+    botPermissions: [PermissionFlagsBits.Administrator],
+
+    subcommand_permissions: {
+        'subcommand': PermissionFlagsBits.Administrator,
+    },
     options: [
         // 1️⃣ Subcommand
         {
@@ -124,16 +137,6 @@ module.exports = {
             ]
         }
     ],
-
-    //comment or delete the following lines to disable development flags
-    testOnly: true,
-    devOnly: true,
-    deleted: true,
-
-    mainOnly: true,
-
-    permissionsRequired: [PermissionFlagsBits.Administrator],
-    botPermissions: [PermissionFlagsBits.Administrator],
 
     /**
      * @param {Client} client

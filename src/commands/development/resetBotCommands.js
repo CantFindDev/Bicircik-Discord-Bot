@@ -4,11 +4,13 @@ const { botID, testGuild, mainGuild } = require('../../../config.json');
 require("dotenv").config();
 
 module.exports = {
-    name: 'resetbotcommands',
+    name: 'deleteallcommands',
     description: 'Deletes ALL commands globally and in test/main guilds.',
     options: [],
+
     devOnly: true,
     testOnly: true,
+    mainOnly: false,
     deleted: true,
 
     /**
