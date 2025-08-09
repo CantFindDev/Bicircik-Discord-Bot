@@ -1,4 +1,4 @@
-const { Client,Interaction, ApplicationCommandOptionType,PermissionFlagsBits } = require('discord.js');
+const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     name: 'ban',
@@ -12,7 +12,7 @@ module.exports = {
             name: 'hedef-kullanıcı',
             description: "Atılacak kullanıcı",
             required: true,
-            type: ApplicationCommandOptionType.Mentionable,
+            type: ApplicationCommandOptionType.User,
         },
          {
              name: 'sebep',
@@ -21,19 +21,16 @@ module.exports = {
         }
     ],
     
-    /**
-     * @param {Client} client
-     * @param {Interaction} interaction
-     */
     callback: async (client, interaction) => {
-        const targetUserID = interaction.options.get('hedef-kullanıcı').value;
-        const reason = interaction.options.get('sebep')?.value || 'Sebep belirtilmedi.';
+        const targetUserID = interaction.options.getUser('hedef-kullanıcı').id;
+        const reason = interaction.options.getString('sebep') || 'Sebep belirtilmedi.';
 
         await interaction.deferReply({ ephemeral: true });
 
-        const targetUser = await interaction.guild.members.fetch(targetUserID);
-
-        if (!targetUser) {
+        let targetUser;
+        try {
+            targetUser = await interaction.guild.members.fetch(targetUserID);
+        } catch {
             await interaction.editReply({ content: 'Kullanıcı bulunamadı.', ephemeral: true });
             return;
         }
@@ -53,9 +50,9 @@ module.exports = {
             return;
         }
 
-        const targetUserRolePosition = targetUser.roles.highest.position; //Highest role of the target user
-        const requesterRolePosition = interaction.member.roles.highest.position; //Highest role of the requester
-        const botRolePosition = interaction.guild.members.me.roles.highest.position; //Highest role of the bot
+        const targetUserRolePosition = targetUser.roles.highest.position;
+        const requesterRolePosition = interaction.member.roles.highest.position;
+        const botRolePosition = interaction.guild.members.me.roles.highest.position;
 
         if (targetUserRolePosition >= requesterRolePosition) {
             await interaction.editReply({ content: 'Senden daha üst veya aynı role sahip bir kullanıcıyı atamazsın.', ephemeral: true });
@@ -72,8 +69,7 @@ module.exports = {
             await interaction.editReply({ content: `${targetUser} kullanıcısı sunucudan atıldı. Sebep: ${reason}`, ephemeral: false });
         } catch (error) {
             console.error('Kullanıcıyı atarken bir hata oluştu:', error);
+            await interaction.editReply({ content: 'Kullanıcıyı atarken bir hata oluştu.', ephemeral: true });
         }
-
-      
     }
-}
+};

@@ -1,37 +1,30 @@
-
 const getLocalCommands = require('../../utils/getLocalCommands');
 const { developers, testGuild } = require('../../../config.json');
 const { Client, Interaction } = require('discord.js');
 
-/**
- * @param {Client} client
- * @param {Interaction} interaction
- */
-module.exports = async (client,interaction) => {
-
+module.exports = async (client, interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
     const localCommands = getLocalCommands();
 
     try {
         const commandObject = localCommands.find((cmd) => cmd.name === interaction.commandName);
-
         if (!commandObject) return;
 
         if (!interaction.inGuild()) {
             interaction.reply({
-                content: "You can't run commands out of the server",
+                content: "Komutları sunucu dışında kullanamazsınız.",
                 ephemeral: true,
-            })
+            });
             return;
         }
 
         if (commandObject.devOnly) {
             if (!developers.includes(interaction.member.id)) {
                 interaction.reply({
-                    content: "Only developers can run this command!",
+                    content: "Bu komutu sadece geliştiriciler kullanabilir!",
                     ephemeral: true,
-                })
+                });
                 return;
             }
         }
@@ -39,9 +32,9 @@ module.exports = async (client,interaction) => {
         if (commandObject.testOnly) {
             if (!(interaction.guild.id === testGuild)) {
                 interaction.reply({
-                    content: "This command can only be ran on the test server",
+                    content: "Bu komut sadece test sunucusunda çalışabilir.",
                     ephemeral: true,
-                })
+                });
                 return;
             }
         }
@@ -49,20 +42,20 @@ module.exports = async (client,interaction) => {
         const requiredPerms = BigInt(commandObject.default_member_permissions || '0');
         if (!interaction.member.permissions.has(requiredPerms)) {
             return interaction.reply({
-                content: 'You do not have permission to use this command.',
+                content: 'Bu komutu kullanmak için yetkiniz yok.',
                 ephemeral: true
             });
         }
 
-        if (commandObject.botPermissions?.lenght) {
+        if (commandObject.botPermissions?.length) {
             for (const permission of commandObject.botPermissions) {
                 const bot = interaction.guild.members.me;
 
                 if (!bot.permissions.has(permission)) {
-                     interaction.reply({
-                        content: `I don't have enough permissions.`,
+                    interaction.reply({
+                        content: `Yeterli izinlere sahip değilim.`,
                         ephemeral: true,
-                     });
+                    });
                     break;
                 }
             }
@@ -74,7 +67,7 @@ module.exports = async (client,interaction) => {
 
             if (!interaction.member.permissions.has(requiredPerms)) {
                 return interaction.reply({
-                    content: `You need additional permissions to run \`${subcommand}\`.`,
+                    content: `\`${subcommand}\` alt komutunu çalıştırmak için ek izinlere ihtiyacınız var.`,
                     ephemeral: true
                 });
             }
@@ -83,7 +76,7 @@ module.exports = async (client,interaction) => {
         await commandObject.callback(client, interaction);
 
     } catch (error) {
-        console.log(`There was an error running this command: ${error}`)
+        console.log(`Bu komut çalıştırılırken hata oluştu: ${error}`);
     }
 
 };

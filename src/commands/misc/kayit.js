@@ -1,8 +1,8 @@
 const { Client, Interaction, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, ActionRowBuilder } = require('discord.js');
 
 module.exports = {
-    name: 'kayit',
-    description: 'Kayit olmak için',
+    name: 'kayıt',
+    description: 'Kayıt olmak için',
 
     botPermissions: [PermissionFlagsBits.ManageNicknames],
 
@@ -52,7 +52,7 @@ module.exports = {
                 await modalInteraction.member.roles.add(roleId);
                 await modalInteraction.reply({ content: "Nickname değiştirildi ve rol başarıyla verildi!", ephemeral: true });
             } catch (error) {
-                if (error.code === 50013) { // Missing Permissions
+                if (error.code === 50013) {
                     await modalInteraction.reply({ content: "Botun işlem yapmak için yeterli izni yok veya kullanıcı rolü çok yüksek.", ephemeral: true });
                 } else {
                     console.error(error);

@@ -11,7 +11,7 @@ module.exports = {
     devOnly: true,
     testOnly: true,
     mainOnly: false,
-    deleted: true,
+    deleted: false,
 
     /**
      * @param {Client} client

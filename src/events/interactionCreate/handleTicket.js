@@ -1,148 +1,203 @@
-const {Client,Interaction, ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, ChannelType, EmbedBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require("discord.js");
+const {
+    Client,
+    Interaction,
+    ModalBuilder,
+    TextInputBuilder,
+    ActionRowBuilder,
+    TextInputStyle,
+    ChannelType,
+    EmbedBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    PermissionsBitField
+} = require("discord.js");
+
 const ticketSchema = require('../../schemas/ticketSchema');
-const ticketChannelSchema = require('../../schemas/ticketChannelSchema');
 const { createTranscript } = require('discord-html-transcripts');
 
 /**
  * @param {Client} client
  * @param {Interaction} interaction
  */
-module.exports = async (client, interaction) => { 
-     const user = interaction.user;
-    const data = await ticketSchema.findOne({ guildID: interaction.guild.id });
-    const userData = await ticketChannelSchema.findOne({ userID: user.id });
-    
+module.exports = async (client, interaction) => {
+    const user = interaction.user;
+    const guildData = await ticketSchema.findOne({ guildID: interaction.guild.id });
+
+    const kullaniciBiletiniGetir = () => guildData?.tickets.find(t => t.userID === user.id);
 
     switch (interaction.customId) {
-        case 'ticketCreateSelect':
-            if (userData) return await interaction.reply({ content: `You have already have a ongoing ticket at <#${userData.channelID}>`, ephemeral: true });
-            
+
+        // --- Create ticket menu ---
+        case 'ticketCreateSelect': {
+            if (kullaniciBiletiniGetir()) {
+                return interaction.reply({
+                    content: `Zaten <#${kullaniciBiletiniGetir().channelID}> kanalında açık bir biletin var.`,
+                    ephemeral: true
+                });
+            }
+
             const modal = new ModalBuilder()
-                .setTitle('Create your ticket')
+                .setTitle('Biletinizi oluşturun')
                 .setCustomId('createTicketModal')
-        
-            const ticketReasonInput = new TextInputBuilder()
-                .setCustomId('ticketCreationReason')
-                .setRequired(true)
-                .setPlaceholder('What is the reason for creating this ticket')
-                .setLabel('Why are you creating this ticket?')
-                .setStyle(TextInputStyle.Paragraph);
-        
-            const otherReasonInput = new TextInputBuilder()
-                .setCustomId('additionalInformation')
-                .setRequired(false)
-                .setPlaceholder('Feel free to leave this blank')
-                .setLabel('Provide us with any additional information')
-                .setStyle(TextInputStyle.Paragraph);
-        
-            const firstActionRow = new ActionRowBuilder().addComponents(ticketReasonInput);
-            const secondActionRow = new ActionRowBuilder().addComponents(otherReasonInput);
+                .addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('ticketCreationReason')
+                            .setLabel('Neden bu bileti oluşturuyorsunuz?')
+                            .setPlaceholder('Bilet oluşturma sebebinizi yazınız')
+                            .setRequired(true)
+                            .setStyle(TextInputStyle.Paragraph)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('additionalInformation')
+                            .setLabel('Eklemek istediğiniz başka bir bilgi var mı?')
+                            .setPlaceholder('İsterseniz boş bırakabilirsiniz')
+                            .setRequired(false)
+                            .setStyle(TextInputStyle.Paragraph)
+                    )
+                );
 
-            modal.addComponents(firstActionRow, secondActionRow);
-            await interaction.showModal(modal);
-            break;
-        case 'createTicketModal':
-            if (!data) return await interaction.reply({ content: `Sorry! Looks like you found this message but the ticket system is not yet setup here.`, ephemeral: true })
-        
-            const ticketReasonValue = interaction.fields.getTextInputValue('ticketCreationReason');
-            const additionalInformationValue = interaction.fields.getTextInputValue('additionalInformation');
-            const category = await interaction.guild.channels.cache.get(data.category);
+            return interaction.showModal(modal);
+        }
 
-            const ticketChannel = await interaction.guild.channels.create({
-                name: `ticket-${user.username}`,
+        // --- Create ticket modal ---
+        case 'createTicketModal': {
+            if (!guildData) {
+                return interaction.reply({
+                    content: `Üzgünüz! Bu sunucuda bilet sistemi henüz ayarlanmadı.`,
+                    ephemeral: true
+                });
+            }
+
+            const sebep = interaction.fields.getTextInputValue('ticketCreationReason');
+            const ekBilgi = interaction.fields.getTextInputValue('additionalInformation');
+            const kategori = interaction.guild.channels.cache.get(guildData.category);
+
+            const biletKanali = await interaction.guild.channels.create({
+                name: `bilet-${user.username}`,
                 type: ChannelType.GuildText,
-                topic: `Ticket user: ${user.username} | Ticket reason: ${ticketReasonValue}`,
-                parent: category,
+                topic: `Bilet sahibi: ${user.username} | Sebep: ${sebep}`,
+                parent: kategori?.id || null,
                 permissionOverwrites: [
+                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                     {
-                        id: interaction.guild.id,
-                        deny: [PermissionsBitField.Flags.ViewChannel]
-                    },
-                    {
-                        id: interaction.user.id,
-                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory]
+                        id: user.id,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel,
+                            PermissionsBitField.Flags.SendMessages,
+                            PermissionsBitField.Flags.ReadMessageHistory
+                        ]
                     }
                 ]
             });
 
-            await ticketChannelSchema.create({
-                channelID: ticketChannel.id,
-                userID: user.id,
-            });
+            await ticketSchema.updateOne(
+                { guildID: interaction.guild.id },
+                { $push: { tickets: { channelID: biletKanali.id, userID: user.id, createdAt: new Date() } } }
+            );
 
             const embed = new EmbedBuilder()
                 .setColor("Blurple")
-                .setTitle(`Ticket from ${user.username}`)
-                .setDescription(`Opening Reason: ${ticketReasonValue}\n\n Additional Information: ${additionalInformationValue}`)
+                .setTitle(`${user.username} kullanıcısından bilet`)
+                .setDescription(`**Sebep:** ${sebep}\n\n**Ek Bilgi:** ${ekBilgi || "Yok"}`)
                 .setTimestamp();
-        
-            const button = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('closeTicket')
-                        .setLabel('Close Ticket')
-                        .setStyle(ButtonStyle.Danger),
-                
-                    new ButtonBuilder()
-                        .setCustomId('ticketTranscript')
-                        .setLabel('Transcript')
-                        .setStyle(ButtonStyle.Primary),
-                );
-        
-            await ticketChannel.send({ embeds: [embed], components: [button] });
-            await interaction.reply({ content: `Your ticket has been opened in ${ticketChannel}`, ephemeral: true })
-            break;
-        case 'closeTicket':
-            const closeModal = new ModalBuilder()
-                .setTitle('Ticket Closing')
+
+            const butonlar = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('closeTicket')
+                    .setLabel('Bileti Kapat')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('ticketTranscript')
+                    .setLabel('Döküm')
+                    .setStyle(ButtonStyle.Primary)
+            );
+
+            await biletKanali.send({ embeds: [embed], components: [butonlar] });
+            return interaction.reply({ content: `Biletiniz ${biletKanali} kanalında açıldı.`, ephemeral: true });
+        }
+
+        // --- Close ticket button ---
+        case 'closeTicket': {
+            const kapatmaModal = new ModalBuilder()
+                .setTitle('Bilet Kapatma')
                 .setCustomId('closeTicketModal')
-            
-            const closeReasonInput = new TextInputBuilder()
-                .setCustomId('closeTicketReason')
-                .setRequired(true)
-                .setPlaceholder('What is the reason for closing this ticket?')
-                .setLabel('Provide a closing reason')
-                .setStyle(TextInputStyle.Paragraph);
-            
-            const firstActionRowCloseTicketModal = new ActionRowBuilder().addComponents(closeReasonInput);
+                .addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('closeTicketReason')
+                            .setLabel('Kapatma sebebinizi belirtin')
+                            .setPlaceholder('Bu bilet neden kapatılıyor?')
+                            .setRequired(true)
+                            .setStyle(TextInputStyle.Paragraph)
+                    )
+                );
 
-            closeModal.addComponents(firstActionRowCloseTicketModal);
-            await interaction.showModal(closeModal);
-            break;
-        case 'closeTicketModal':
-            const ticketChannelData = await ticketChannelSchema.findOne({ channelID: interaction.channel.id });
-            const member = await interaction.guild.members.cache.get(ticketChannelData?.userID);
+            return interaction.showModal(kapatmaModal);
+        }
 
-            const closeReason = interaction.fields.getTextInputValue('closeTicketReason');
-            await interaction.reply({ content: 'Closing this ticket...' });
+        // --- Close ticket modal ---
+        case 'closeTicketModal': {
+            if (!guildData) {
+                return interaction.reply({ content: 'Bu sunucu için bilet verisi bulunamadı.', ephemeral: true });
+            }
 
-            const transcriptChannel = await interaction.guild.channels.cache.get(data.transcriptsChannel);
-            const finalTranscript = await createTranscript(interaction.channel, {
+            const biletKaydi = guildData.tickets.find(t => t.channelID === interaction.channel.id);
+            if (!biletKaydi) {
+                return interaction.reply({ content: 'Bu kanal için açık bir bilet bulunamadı.', ephemeral: true });
+            }
+
+            const uye = interaction.guild.members.cache.get(biletKaydi.userID);
+            const kapatmaSebebi = interaction.fields.getTextInputValue('closeTicketReason');
+            await interaction.reply({ content: 'Bilet kısa süre içinde kapatılacak...' });
+
+            const dokumKanal = interaction.guild.channels.cache.get(guildData.transcriptsChannel);
+            if (!dokumKanal) {
+                return interaction.followUp({ content: 'Döküm kanalı bulunamadı.', ephemeral: true });
+            }
+
+            const finalDokum = await createTranscript(interaction.channel, {
                 limit: -1,
                 returnBuffer: false,
                 filename: `${interaction.channel.name}.html`
             });
-            
-            await ticketChannelSchema.deleteOne({ userID: member.user.id });
-            await transcriptChannel.send({ content: `**${member.user.username}**'s ticket got closed by **${interaction.user.username}** with the reason: \`${closeReason}\` \nTranscript of the conversation:`, files: [finalTranscript] });
-            
+
             setTimeout(async () => {
-                await interaction.channel.delete().catch(err => { });
-                await member.send(`You are receiving this notification because your ticket in ${interaction.guild.name} has been closed for: \`${closeReason}\``).catch(err => { });
+                await ticketSchema.updateOne(
+                    { guildID: interaction.guild.id },
+                    { $pull: { tickets: { channelID: interaction.channel.id } } }
+                );
+
+                await dokumKanal.send({
+                    content: `**${uye?.user.username || "Bilinmiyor"}** kullanıcısının bileti **${interaction.user.username}** tarafından kapatıldı.\nSebep: \`${kapatmaSebebi}\``,
+                    files: [finalDokum]
+                });
+
+                await interaction.channel.delete().catch(() => {});
+                if (uye) {
+                    await uye.send(
+                        `**${interaction.guild.name}** sunucusundaki biletiniz kapatıldı.\nSebep: \`${kapatmaSebebi}\``
+                    ).catch(() => {});
+                }
             }, 5000);
-            
+
             break;
-        case 'ticketTranscript':
-            const transcript = await createTranscript(interaction.channel, {
+        }
+
+        // --- Transcript button ---
+        case 'ticketTranscript': {
+            const dokum = await createTranscript(interaction.channel, {
                 limit: -1,
                 returnBuffer: false,
                 filename: `${interaction.channel.name}.html`
             });
 
-            var msg = await interaction.channel.send({ content: `Your transcript:`, files: [transcript] });
-            // var message = `**Here is your [ticket transcript](https://mahto.id/chat-exporter?url=${msg.attachments.first()?.url}) from ${interaction.guild.name}!**`
-            // await msg.delete().catch(err => { });
-            // await interaction.reply({ content: message, ephemeral: true });
-            break;
+            return interaction.reply({
+                content: `İşte bilet dökümünüz:`,
+                files: [dokum],
+                ephemeral: true
+            });
+        }
     }
-}
+};

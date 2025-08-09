@@ -9,53 +9,54 @@ function getRandomXP(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/**
- * @param {Client} client
- * @param {Message} message
- */
 module.exports = async (client, message) => { 
     if (!message.inGuild() || message.author.bot || cooldowns.has(message.author.id)) return;
 
     const xpToGive = getRandomXP(5, 15);
 
-    const query = {
-        userID: message.author.id,
-        guildID: message.guild.id,
-    }
-
     try {
-        const level = await levelSchema.findOne(query);
+        let guildData = await levelSchema.findOne({ guildID: message.guild.id });
 
-        if (level) {
-            level.xp += xpToGive;
-
-            if (level.xp > calculateLevelXp(level.level)) {
-                level.xp = 0;
-                level.level += 1;
-
-                message.channel.send(`${message.member} you have leveled up to **level ${level.level}**.`)
-            }
-
-            await level.save().catch((e) => {
-                console.log(`Error saving updated level ${e}`);
-                return;
+        if (!guildData) {
+            guildData = new levelSchema({
+                guildID: message.guild.id,
+                users: []
             });
         }
-        else {
-            const newLevel = new levelSchema({
-                userID: message.author.id,
-                guildID: message.guild.id,
-                xp: xpToGive
-            })
 
-            await newLevel.save()
+        if (!Array.isArray(guildData.users)) {
+            guildData.users = [];
         }
+
+        let userData = guildData.users.find(u => u.userID === message.author.id);
+
+        if (userData) {
+            userData.xp += xpToGive;
+
+            if (userData.xp >= calculateLevelXp(userData.level)) {
+                userData.xp = 0;
+                userData.level += 1;
+
+                message.channel.send(`${message.member}, **${userData.level}. seviyeye** ulaştınız.`);
+            }
+        } else {
+            guildData.users.push({
+                userID: message.author.id,
+                xp: xpToGive,
+                level: 0
+            });
+        }
+
+        await guildData.save().catch((e) => {
+            console.log(`Seviye güncellenirken hata oluştu: ${e}`);
+        });
 
         cooldowns.add(message.author.id);
         setTimeout(() => {
             cooldowns.delete(message.author.id);
-        }, 30000)
+        }, 30000);
+
     } catch (error) {
-        console.log(`Error giving xp: ${error}`)
+        console.log(`XP verirken hata oluştu: ${error}`);
     }
-}
+};
