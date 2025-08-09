@@ -41,6 +41,11 @@ module.exports = {
                             channel_types: [ChannelType.GuildText]
                         }
                     ]
+                },
+                {
+                    name: 'sil',
+                    description: 'Karşılama sistemini sıfırla',
+                    type: ApplicationCommandOptionType.Subcommand,
                 }
             ]
         }
@@ -54,14 +59,28 @@ module.exports = {
 
         const group = interaction.options.getSubcommandGroup(false);
         const subcommand = interaction.options.getSubcommand(false);
-        const channel = interaction.options.getChannel('kanal');
-
-        if (!channel) {
-            return await interaction.reply({ content: 'Geçerli bir kanal seçmelisiniz.', ephemeral: true });
-        }
 
         if (group !== 'kurulum') {
             return await interaction.reply({ content: 'Bilinmeyen komut grubu.', ephemeral: true });
+        }
+
+        if (subcommand === 'sil') {
+            try {
+                const deleted = await welcomerSchema.findOneAndDelete({ guildID: interaction.guild.id });
+                if (deleted) {
+                    return await interaction.reply({ content: '✅ Karşılama sistemi başarıyla kaldırıldı.', ephemeral: true });
+                } else {
+                    return await interaction.reply({ content: '⚠️ Karşılama sistemi zaten ayarlı değil.', ephemeral: true });
+                }
+            } catch (error) {
+                console.error(error);
+                return await interaction.reply({ content: '❌ Bir hata oluştu, lütfen daha sonra tekrar deneyin.', ephemeral: true });
+            }
+        }
+
+        const channel = interaction.options.getChannel('kanal');
+        if (!channel) {
+            return await interaction.reply({ content: 'Geçerli bir kanal seçmelisiniz.', ephemeral: true });
         }
 
         let data = await welcomerSchema.findOne({ guildID: interaction.guild.id });
@@ -73,13 +92,13 @@ module.exports = {
             case 'giris':
                 data.welcomeChannel = channel.id;
                 await data.save();
-                await interaction.reply(`✅ Giriş kanalı başarıyla ${channel} olarak ayarlandı.`);
+                await interaction.reply({ content: `✅ Giriş kanalı başarıyla ${channel} olarak ayarlandı.`, ephemeral: true });
                 break;
 
             case 'cikis':
                 data.goodbyeChannel = channel.id;
                 await data.save();
-                await interaction.reply(`👋 Çıkış kanalı başarıyla ${channel} olarak ayarlandı.`);
+                await interaction.reply({ content: `👋 Çıkış kanalı başarıyla ${channel} olarak ayarlandı.`, ephemeral: true });
                 break;
 
             default:

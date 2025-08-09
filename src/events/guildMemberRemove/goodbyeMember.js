@@ -24,7 +24,7 @@ module.exports = async (client, interaction) => {
         }))
         .setDisplayName(user.username)
         .setType("goodbye")
-        .setMessage("Bye!");
+        .setMessage("Seni özleyeceğiz 😢");
 
     const image = await card.build({ format: "png" });
     const attachment = new AttachmentBuilder(image);

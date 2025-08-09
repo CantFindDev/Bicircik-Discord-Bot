@@ -39,7 +39,7 @@ module.exports = async (client) => {
 
     // First, iterate all local commands and add/edit them appropriately
     for (const localCommand of localCommands) {
-      const { name, description, options, testOnly, mainOnly, deleted, memberPermissions } = localCommand;
+      const { name, description, options, testOnly, mainOnly, deleted, memberPermissions, subcommandPermissions } = localCommand;
 
       const default_member_permissions = Array.isArray(memberPermissions) && memberPermissions.length > 0
         ? memberPermissions.reduce((acc, perm) => acc | BigInt(perm), 0n).toString()

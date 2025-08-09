@@ -1,16 +1,20 @@
-const { Client, Message } = require('discord.js');
+const { AttachmentBuilder } = require('discord.js');
 const levelSchema = require('../../schemas/levelSchema');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
 const cooldowns = new Set();
+const signUpSettings = require('../../schemas/signUpSchema');
+const canvacord = require('canvacord');
 
 function getRandomXP(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-module.exports = async (client, message) => { 
-    if (!message.inGuild() || message.author.bot || cooldowns.has(message.author.id)) return;
+module.exports = async (client, message) => {
+    if (!message.inGuild() || message.author.bot) return;
+
+    // kayıt kanalında XP verme
+    const settings = await signUpSettings.findOne({ guildID: message.guild.id });
+    if (settings && message.channel.id === settings.kayıtChannel) return;
 
     const xpToGive = getRandomXP(5, 15);
 
@@ -20,41 +24,80 @@ module.exports = async (client, message) => {
         if (!guildData) {
             guildData = new levelSchema({
                 guildID: message.guild.id,
-                users: []
+                userLevels: []
             });
         }
 
-        if (!Array.isArray(guildData.users)) {
-            guildData.users = [];
+        if (!Array.isArray(guildData.userLevels)) {
+            guildData.userLevels = [];
         }
 
-        let userData = guildData.users.find(u => u.userID === message.author.id);
+        let userData = guildData.userLevels.find(u => u.userID === message.author.id);
 
-        if (userData) {
+        if (!userData) {
+            userData = {
+                userID: message.author.id,
+                xp: xpToGive,
+                level: 0
+            };
+            guildData.userLevels.push(userData);
+        } else {
+            if (cooldowns.has(message.author.id)) return;
+
             userData.xp += xpToGive;
 
             if (userData.xp >= calculateLevelXp(userData.level)) {
                 userData.xp = 0;
                 userData.level += 1;
 
-                message.channel.send(`${message.member}, **${userData.level}. seviyeye** ulaştınız.`);
+                // Rank hesaplama
+                const allLevels = [...guildData.userLevels].sort((a, b) => {
+                    if (a.level === b.level) return b.xp - a.xp;
+                    return b.level - a.level;
+                });
+
+                const currentRank = allLevels.findIndex(u => u.userID === message.author.id) + 1;
+
+                const targetUserObj = message.member;
+                const fetchedLevel = userData;
+
+                const { Font } = require('canvacord');
+                Font.loadDefault();
+
+                const rank = new canvacord.RankCardBuilder()
+                    .setTextStyles({
+                        level: "SEVİYE:",
+                        xp: "XP:",
+                        rank: "SIRALAMA:",
+                    })
+                    .setAvatar(
+                        targetUserObj.user.displayAvatarURL({
+                            size: 256,
+                            forceStatic: true,
+                        })
+                    )
+                    .setRank(currentRank)
+                    .setLevel(fetchedLevel.level)
+                    .setCurrentXP(fetchedLevel.xp)
+                    .setRequiredXP(calculateLevelXp(fetchedLevel.level))
+                    .setStatus(targetUserObj.presence?.status || "offline")
+                    .setUsername(targetUserObj.user.username)
+                    .setDisplayName(targetUserObj.displayName);
+
+                const image = await rank.build({ format: 'png' });
+                const attachment = new AttachmentBuilder(image, { name: 'rank.png' });
+
+                await message.channel.send({
+                    content: `${message.member}, **${userData.level}. seviyeye** ulaştınız.`,
+                    files: [attachment]
+                });
             }
-        } else {
-            guildData.users.push({
-                userID: message.author.id,
-                xp: xpToGive,
-                level: 0
-            });
         }
 
-        await guildData.save().catch((e) => {
-            console.log(`Seviye güncellenirken hata oluştu: ${e}`);
-        });
+        await guildData.save();
 
         cooldowns.add(message.author.id);
-        setTimeout(() => {
-            cooldowns.delete(message.author.id);
-        }, 30000);
+        setTimeout(() => cooldowns.delete(message.author.id), 30000);
 
     } catch (error) {
         console.log(`XP verirken hata oluştu: ${error}`);

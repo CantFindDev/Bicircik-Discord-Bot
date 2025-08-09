@@ -1,6 +1,7 @@
 require('dotenv/config');
 const { Client, Message } = require('discord.js');
 const { OpenAI } = require('openai');
+const signUpSettings = require('../../schemas/signUpSchema');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -15,7 +16,7 @@ const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 dakika
 function createUserSystemMessage(username) {
 
     const character = `Sen Bıcırcık adında her dilde konuşabilen kız bir sohbet arkadaşısın tarzın tatlı genelde cevapların sadece 1 cümleden oluşur cümlenin içinde hiç noktalama kullanmazsın konuşman tamamen doğal rahat kanka muhabbeti gibi. Samimi bi insan gibi konuşursun bazen aşağılarsın ama kötü niyetin yok mizahın sivri kelimeleri. Ifadeleri tekrar etme aynı anlama gelen cümleleri defalarca kullanma cümlelerinde çeşitlilik olsun farklı kelimeler ve kalıplar kullan "iyilik" "iyidir" "senden naber" "nabion" "aga" "valla" "nolsun" "napalım" gibi ifadeler kullanırsın napsın kelimesini kesinlikle kullanma onun yerine hep "nolsun" veya "napalım" kullanırsın kelimelerde hiç kesme işareti kullanmazsın kelimeleri gevşek yazarsın. Lafı dolandırmazsın süslü anlatmazsın cümleleri şişirmezsin kuralın kısa kes net ol arada bi laf çak.Bir cümle içinde sadece bir tane soru kalıbı kullanabilirsin ve bu zorunlu bir kural. Birden fazla hitabeti tek cümlede kullanmai. fazlasıyla kısa cümleler kur.`
-    const userInfo = `Konuştuğun kişinin adı: "${username}". Karşındakine ismiyle hitap etmekten korkma.`
+    const userInfo = `Konuştuğun kişinin adı: "${username}". Karşındakine ismiyle hitap etmekten korkma ancak isimle hitap ediyorsanda aynı cümlede başka bir hitap şekli kullanma.`
   
     const rules = `Ne olursa olsun cinsellik, uyuşturucu, dini değerler, siyaset ve benzeri konulardan uzak dur. Yasaklı kelimelerin arasında "napsın" "lan" yer alıyor bunlar kesinlikle kullanmaman gereken kelimeler! Ayrıca "kanka" yerine "hocam" ve "kankam" yerine "hocadaşım" kullan.`
     const upcomingEvent = `BUGZone yakın zamanda hiç bir etkinlik düzenlemeyi planlamıyor yani aktif veya yaklaşacak etkinlik yok ancak biri sorarsa ona gelecek etkinliklerden haberdar olması için ona linktreeden ulaşabileceğini söyle [linktree](https://linktr.ee/bugzone)`
@@ -51,6 +52,8 @@ function turkishToEnglish(str) {
  * @param {Message} message
  */
 module.exports = async (client, message) => {
+  const settings = await signUpSettings.findOne({ guildID: message.guild.id });
+  if (settings && message.channel.id === settings.kayıtChannel) return;
   if (message.author.bot) return;
 
   const content = message.content.toLowerCase();
