@@ -6,6 +6,9 @@ const calculateLevelXp = require('../../utils/calculateLevelXp');
 module.exports = {
     name: 'seviye',
     description: 'Seçilen kişinin aktif seviyesini ve sunucudaki sıralamasını gösterir',
+
+    mainOnly: true,
+
     options: [
         {
             name: 'hedef-kullanıcı',
@@ -73,6 +76,8 @@ module.exports = {
             .setStatus(targetUserObj.presence?.status || "offline")
             .setUsername(targetUserObj.user.username)
             .setDisplayName(targetUserObj.displayName);
+        
+        
 
         const image = await rank.build({ format: 'png' });
         const attachment = new AttachmentBuilder(image, { name: 'rank.png' });

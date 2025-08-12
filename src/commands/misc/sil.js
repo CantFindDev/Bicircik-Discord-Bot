@@ -11,6 +11,8 @@ module.exports = {
   name: 'sil',
   description: 'Mesajları veya kanalı temizler',
 
+  mainOnly: true,
+
   memberPermissions: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages],
   botPermissions: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages],
 

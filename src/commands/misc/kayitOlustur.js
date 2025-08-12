@@ -4,6 +4,8 @@ const signUpModel = require('../../schemas/signUpSchema');
 module.exports = {
   name: 'kayıt-oluştur',
   description: 'Kayıt sistemini ayarla veya sil',
+
+  mainOnly: true,
   
   memberPermissions: [PermissionFlagsBits.Administrator],
   botPermissions: [PermissionFlagsBits.ManageNicknames],

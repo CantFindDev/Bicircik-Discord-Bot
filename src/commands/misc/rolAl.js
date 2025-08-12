@@ -59,6 +59,8 @@ module.exports = {
   name: 'rol-al',
   description: 'Rol alma sistemi',
 
+  mainOnly: true,
+
   memberPermissions: [PermissionFlagsBits.Administrator],
   botPermissions: [PermissionFlagsBits.ManageRoles],
 

@@ -4,6 +4,8 @@ module.exports = {
     name: 'ban',
     description: "Sunucudan bir kullanıcıyı tamamen atar!",
 
+    mainOnly: true,
+
     memberPermissions: [PermissionFlagsBits.BanMembers],
     botPermissions: [PermissionFlagsBits.BanMembers],
 

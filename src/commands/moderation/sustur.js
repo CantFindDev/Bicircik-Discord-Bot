@@ -5,6 +5,8 @@ module.exports = {
     name: 'sustur',
     description: 'Kullanıcıyı belirli bir süreliğine susturur.',
 
+    mainOnly: true,
+
     memberPermissions: [PermissionFlagsBits.MuteMembers],
     botPermissions: [PermissionFlagsBits.MuteMembers],
 

@@ -13,9 +13,6 @@ module.exports = {
     memberPermissions: [PermissionFlagsBits.Administrator],
     botPermissions: [PermissionFlagsBits.Administrator],
 
-    subcommand_permissions: {
-        'subcommand': PermissionFlagsBits.Administrator,
-    },
     options: [
         // 1️⃣ Subcommand
         {

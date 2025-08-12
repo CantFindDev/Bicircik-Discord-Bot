@@ -4,15 +4,14 @@ const getLocalCommands = require('../../utils/getLocalCommands');
 const checkCommandDiffirience = require('../../utils/checkCommandDiffirience');
 
 module.exports = async (client) => {
-  const logs = [];
 
   async function safeDelete(commandsManager, commandId, commandName, scopeName = "", isSilent = false) {
     try {
       await commandsManager.delete(commandId);
-      if (!isSilent) logs.push(`🗑️ Deleted ${scopeName} command: ${commandName}`);
+      if (!isSilent) console.log(`🗑️ Deleted ${scopeName} command: ${commandName}`);
     } catch (error) {
       if (error.code === 10063) {
-        logs.push(`ℹ️ ${scopeName} command already deleted or not found: ${commandName}`);
+        console.log(`ℹ️ ${scopeName} command already deleted or not found: ${commandName}`);
       } else {
         throw error;
       }
@@ -55,7 +54,7 @@ module.exports = async (client) => {
       }
 
       if (testOnly === true && mainOnly === true) {
-        logs.push(`⚠️ Command "${name}" cannot be both testOnly and mainOnly. Skipping...`);
+        console.log(`⚠️ Command "${name}" cannot be both testOnly and mainOnly. Skipping...`);
         continue;
       }
 
@@ -66,13 +65,13 @@ module.exports = async (client) => {
           const differs = checkCommandDiffirience(existingTest, localCommand);
           if (differs) {
             await testCommands.edit(existingTest.id, { description, options, default_member_permissions });
-            logs.push(`🔄 Edited Test command: ${name}`);
+            console.log(`🔄 Edited Test command: ${name}`);
           } else {
-            logs.push(`✅ Test command "${name}" is up to date. No edit needed.`);
+            console.log(`✅ Test command "${name}" is up to date. No edit needed.`);
           }
         } else {
           await testCommands.create({ name, description, options, default_member_permissions });
-          logs.push(`⚙️ Created Test command: ${name}`);
+          console.log(`⚙️ Created Test command: ${name}`);
         }
         // Ensure deleted from other scopes
         if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
@@ -88,13 +87,13 @@ module.exports = async (client) => {
           const differs = checkCommandDiffirience(existingMain, localCommand);
           if (differs) {
             await mainCommands.edit(existingMain.id, { description, options, default_member_permissions });
-            logs.push(`🔄 Edited Main command: ${name}`);
+            console.log(`🔄 Edited Main command: ${name}`);
           } else {
-            logs.push(`✅ Main command "${name}" is up to date. No edit needed.`);
+            console.log(`✅ Main command "${name}" is up to date. No edit needed.`);
           }
         } else {
           await mainCommands.create({ name, description, options, default_member_permissions });
-          logs.push(`⚙️ Created Main command: ${name}`);
+          console.log(`⚙️ Created Main command: ${name}`);
         }
         // Ensure deleted from other scopes
         if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
@@ -110,13 +109,13 @@ module.exports = async (client) => {
         const differs = checkCommandDiffirience(existingGlobal, localCommand);
         if (differs) {
           await globalCommands.edit(existingGlobal.id, { description, options, default_member_permissions });
-          logs.push(`🔄 Edited Global command: ${name}`);
+          console.log(`🔄 Edited Global command: ${name}`);
         } else {
-          logs.push(`✅ Global command "${name}" is up to date. No edit needed.`);
+          console.log(`✅ Global command "${name}" is up to date. No edit needed.`);
         }
       } else {
         await globalCommands.create({ name, description, options, default_member_permissions });
-        logs.push(`🛠️ Created Global command: ${name}`);
+        console.log(`🛠️ Created Global command: ${name}`);
       }
     }
 
@@ -126,7 +125,7 @@ module.exports = async (client) => {
     for (const [name, cmd] of existingTestMap) {
       if (!shouldExistTest.has(name)) {
         await safeDelete(testCommands, cmd.id, name,"Test",true);
-        logs.push(`🗑️ Removed Test duplicate of command: ${name}`);
+        console.log(`🗑️ Removed Test duplicate of command: ${name}`);
       }
     }
 
@@ -134,7 +133,7 @@ module.exports = async (client) => {
     for (const [name, cmd] of existingMainMap) {
       if (!shouldExistMain.has(name)) {
         await safeDelete(mainCommands, cmd.id, name,"Main",true);
-        logs.push(`🗑️ Removed Main duplicate of command: ${name}`);
+        console.log(`🗑️ Removed Main duplicate of command: ${name}`);
       }
     }
 
@@ -142,14 +141,11 @@ module.exports = async (client) => {
     for (const [name, cmd] of existingGlobalMap) {
       if (!shouldExistGlobal.has(name)) {
         await safeDelete(globalCommands, cmd.id, name,"Global",true);
-        logs.push(`🗑️ Removed Global duplicate of command: ${name}`);
+        console.log(`🗑️ Removed Global duplicate of command: ${name}`);
       }
     }
 
   } catch (error) {
-    logs.push(`❌ Error while syncing commands: ${error.message}`);
+    console.log(`❌ Error while syncing commands: ${error.message}`);
   }
-
-  logs.forEach(log => console.log(log));
-  return logs;
 };

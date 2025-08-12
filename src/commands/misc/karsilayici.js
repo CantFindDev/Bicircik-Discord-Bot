@@ -5,6 +5,8 @@ module.exports = {
     name: 'karşılayıcı',
     description: 'Giriş ve çıkış mesajlarını ayarla',
 
+    mainOnly: true,
+
     memberPermissions: [PermissionFlagsBits.Administrator],
     botPermissions: [PermissionFlagsBits.Administrator],
 

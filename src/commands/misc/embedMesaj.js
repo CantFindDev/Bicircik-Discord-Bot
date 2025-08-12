@@ -11,6 +11,8 @@ module.exports = {
   name: 'embed-mesaj',
   description: 'Embed mesaj gönderme komutu',
 
+  mainOnly: true,
+
   memberPermissions: [PermissionFlagsBits.Administrator],
   botPermissions: [PermissionFlagsBits.Administrator],
 

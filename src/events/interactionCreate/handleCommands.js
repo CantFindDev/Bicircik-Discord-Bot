@@ -1,6 +1,7 @@
 const getLocalCommands = require('../../utils/getLocalCommands');
 const { developers, testGuild } = require('../../../config.json');
 const { Client, Interaction } = require('discord.js');
+const LogBuilder = require("../../utils/logBuilder");
 
 module.exports = async (client, interaction) => {
     if (!interaction.isChatInputCommand()) return;
@@ -73,10 +74,27 @@ module.exports = async (client, interaction) => {
             }
         }
 
+        await new LogBuilder(interaction.guild)
+            .setTitle("🛠 Komut Çalıştırıldı")
+            .setDescription(`**/${interaction.commandName}** komutu çalıştırıldı`)
+            .addField("Kullanıcı", `${interaction.user.tag} (\`${interaction.user.id}\`)`, true)
+            .addField("Kanal", `${interaction.channel}`, true)
+            .setColor("Blue")
+            .send();
+
         await commandObject.callback(client, interaction);
 
     } catch (error) {
-        console.log(`Bu komut çalıştırılırken hata oluştu: ${error}`);
-    }
+        console.error(`Bu komut çalıştırılırken hata oluştu:`, error);
 
+        if (interaction.guild) {
+            await new LogBuilder(interaction.guild)
+                .setTitle("⚠️ Komut Hatası")
+                .setDescription(`**/${interaction.commandName}** komutu çalıştırılırken hata oluştu.`)
+                .addField("Kullanıcı", `${interaction.user.tag} (\`${interaction.user.id}\`)`, true)
+                .addField("Hata Mesajı", `\`\`\`${error?.message || error}\`\`\``)
+                .setColor("Red")
+                .send();
+        }
+    }
 };

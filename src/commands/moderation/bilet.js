@@ -1,11 +1,12 @@
 const { Client, ChannelType, Interaction, ApplicationCommandOptionType, PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require('discord.js');
 const ticketSchema = require('../../schemas/ticketSchema');
+const settingsSchema = require('../../schemas/settingsSchema');
 
 module.exports = {
     name: 'bilet-sistemi',
     description: 'bilet sistemi',
 
-    deleted: false,
+    mainOnly: true,
 
     memberPermissions: [PermissionFlagsBits.Administrator],
     botPermissions: [PermissionFlagsBits.Administrator],

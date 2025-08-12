@@ -12,7 +12,6 @@ function getRandomXP(min, max) {
 module.exports = async (client, message) => {
     if (!message.inGuild() || message.author.bot) return;
 
-    // kayıt kanalında XP verme
     const settings = await signUpSettings.findOne({ guildID: message.guild.id });
     if (settings && message.channel.id === settings.kayıtChannel) return;
 

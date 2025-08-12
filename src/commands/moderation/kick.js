@@ -4,6 +4,8 @@ module.exports = {
     name: 'kick',
     description: "Sunucudan bir kullanıcıyı atar.",
 
+    mainOnly: true,
+
     memberPermissions: [PermissionFlagsBits.KickMembers],
     botPermissions: [PermissionFlagsBits.KickMembers],
 

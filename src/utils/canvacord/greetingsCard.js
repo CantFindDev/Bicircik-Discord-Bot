@@ -59,8 +59,7 @@ class GreetingsCard extends Builder {
             "h1",
             { className: "text-5xl text-white font-bold m-0" },
             type === "welcome" ? "Hoşgeldin" : "Görüşürüz",
-            " ",
-            " ",
+            "\xa0",
             JSX.createElement(
               "span",
               { className: "text-red-500" },

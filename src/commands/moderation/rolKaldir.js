@@ -10,6 +10,8 @@ module.exports = {
   name: 'rol-kaldır',
   description: 'Belirtilen rolü sunucudaki tüm üyelerden kaldırır',
 
+  mainOnly: true,
+
   memberPermissions: [PermissionFlagsBits.Administrator],
   botPermissions: [PermissionFlagsBits.ManageRoles],
 
