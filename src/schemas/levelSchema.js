@@ -8,6 +8,7 @@ const userLevelSchema = new Schema({
 
 const levelSchema = new Schema({
     guildID: { type: String, required: true, unique: true },
+    levelChannel: { type: String, default: null },
     userLevels: [userLevelSchema]
 });
 

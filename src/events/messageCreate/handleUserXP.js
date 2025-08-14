@@ -2,7 +2,7 @@ const { AttachmentBuilder } = require('discord.js');
 const levelSchema = require('../../schemas/levelSchema');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
 const cooldowns = new Set();
-const signUpSettings = require('../../schemas/signUpSchema');
+const signUpSettings = require('../../schemas/registrationSchema');
 const canvacord = require('canvacord');
 
 function getRandomXP(min, max) {
@@ -49,7 +49,6 @@ module.exports = async (client, message) => {
                 userData.xp = 0;
                 userData.level += 1;
 
-                // Rank hesaplama
                 const allLevels = [...guildData.userLevels].sort((a, b) => {
                     if (a.level === b.level) return b.xp - a.xp;
                     return b.level - a.level;
@@ -86,10 +85,14 @@ module.exports = async (client, message) => {
                 const image = await rank.build({ format: 'png' });
                 const attachment = new AttachmentBuilder(image, { name: 'rank.png' });
 
-                await message.channel.send({
-                    content: `${message.member}, **${userData.level}. seviyeye** ulaştınız.`,
-                    files: [attachment]
-                });
+                const levelChannel = guildData.levelChannel ? message.guild.channels.cache.get(guildData.levelChannel) : message.channel;
+
+                if (levelChannel) {
+                    await levelChannel.send({
+                        content: `${message.member}, **${userData.level}. seviyeye** ulaştınız!`,
+                        files: [attachment]
+                    });
+                }
             }
         }
 

@@ -1,118 +1,157 @@
-const { Client, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits } = require('discord.js');
-const signUpModel = require('../../schemas/signUpSchema');
-const LogBuilder = require("../../utils/logBuilder");
+const { 
+  Client,
+  ChannelType, 
+  PermissionFlagsBits, 
+  ApplicationCommandOptionType,
+  EmbedBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder
+} = require('discord.js');
+
+const registrationModel = require('../../schemas/registrationSchema');
 
 module.exports = {
   name: 'kayıt',
-  description: 'Kayıt olma formunu açar',
+  description: 'Kayıt sistemini ayarla veya sil',
+
   mainOnly: true,
-  botPermissions: [PermissionFlagsBits.ManageNicknames, PermissionFlagsBits.ManageRoles],
+  
+  memberPermissions: [PermissionFlagsBits.Administrator],
+  botPermissions: [PermissionFlagsBits.ManageNicknames],
+
+  options: [
+    {
+      name: 'ayarla',
+      description: 'Kayıt kanalı ve rolü ayarla',
+      type: ApplicationCommandOptionType.Subcommand,
+      options: [
+        { name: 'kanal', description: 'Kayıt kanalı seçin', type: ApplicationCommandOptionType.Channel, required: true, channel_types: [0] },
+        { name: 'rol', description: 'Kayıt rolü seçin', type: ApplicationCommandOptionType.Role, required: true }
+      ],
+    },
+    {
+      name: 'gönder',
+      description: 'Kayıt kanalına kayıt mesajını gönderir',
+      type: ApplicationCommandOptionType.Subcommand,
+      options: [
+        { name: 'başlık', description: 'Embed başlığı', required: true, type: ApplicationCommandOptionType.String },
+        { name: 'açıklama', description: 'Embed açıklaması', required: true, type: ApplicationCommandOptionType.String },
+        { name: 'url', description: 'Başlık URL\'si', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'renk', description: 'Embed rengi', required: false, type: ApplicationCommandOptionType.String, choices: [
+          { name: "Rastgele", value: 'Random' }, { name: "Varsayılan", value: 'Default' },
+          { name: "Aqua", value: 'Aqua' }, { name: "Yeşil", value: 'Green' },
+          { name: "Mavi", value: 'Blue' }, { name: "Mor", value: 'Purple' },
+          { name: "Canlı Pembe", value: 'LuminousVividPink' }, { name: "Altın", value: 'Gold' },
+          { name: "Turuncu", value: 'Orange' }, { name: "Kırmızı", value: 'Red' },
+          { name: "Gri", value: 'Grey' }, { name: "Koyu Gri", value: 'DarkGrey' },
+          { name: "Daha Koyu Gri", value: 'DarkerGrey' }, { name: "Tam Siyah Değil", value: 'NotQuiteBlack' },
+          { name: "Koyu ama Siyah Değil", value: 'DarkButNotBlack' }, { name: "Açık Gri", value: 'LightGrey' },
+          { name: "Lacivert", value: 'Navy' }, { name: "Sarı", value: 'Yellow' },
+          { name: "Fuşya", value: 'Fuchsia' }, { name: "Beyaz", value: 'White' },
+          { name: "Gri- Mor", value: 'Greyple' }, { name: "Siyah", value: 'Black' },
+          { name: "Blurple", value: 'Blurple' },
+        ]},
+        { name: 'küçük-resim', description: 'Embed küçük resim URL\'si', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'resim', description: 'Embed büyük resim URL\'si', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'author_name', description: 'Yazar adı', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'author_icon', description: 'Yazar ikonu URL\'si', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'author_url', description: 'Yazar URL\'si', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'footer_text', description: 'Footer metni', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'footer_icon', description: 'Footer ikonu URL\'si', required: false, type: ApplicationCommandOptionType.String },
+        { name: 'zaman-damgasi', description: 'Timestamp ekle', required: false, type: ApplicationCommandOptionType.Boolean },
+      ]
+    },
+    {
+      name: 'sil',
+      description: 'Kayıt sistemini sil',
+      type: ApplicationCommandOptionType.Subcommand,
+    }
+  ],
 
   callback: async (client, interaction) => {
-    try {
-      const data = await signUpModel.findOne({ guildID: interaction.guild.id });
-      if (!data) {
-        await new LogBuilder(interaction.guild)
-          .setTitle("⚠️ Kayıt Başarısız")
-          .setDescription(`**${interaction.user.tag}** kayıt olmaya çalıştı ancak kayıt ayarları yapılmamış.`)
-          .setColor("Red")
-          .send();
+    const subcommand = interaction.options.getSubcommand();
+    let data = await registrationModel.findOne({ guildID: interaction.guild.id });
 
-        return interaction.reply({ content: 'Kayıt ayarları yapılmamış. Lütfen yönetici kayıt setup komutunu kullansın.', ephemeral: true });
-      }
+    switch (subcommand) {
+      case 'ayarla': {
+        const kayıtChannel = interaction.options.getChannel('kanal');
+        const kayıtRole = interaction.options.getRole('rol');
 
-      const kayıtKanalı = interaction.guild.channels.cache.get(data.kayıtChannel);
-      if (interaction.channelId !== data.kayıtChannel) {
-        await new LogBuilder(interaction.guild)
-          .setTitle("⚠️ Kayıt Başarısız")
-          .setDescription(`**${interaction.user.tag}** kayıt olmaya çalıştı ancak yanlış kanalda komut kullandı.`)
-          .addField("Bulunduğu Kanal", `<#${interaction.channelId}>`, true)
-          .addField("Gerekli Kanal", kayıtKanalı ? `<#${kayıtKanalı.id}>` : "Bilinmiyor", true)
-          .setColor("Red")
-          .send();
-
-        return interaction.reply({ content: `Bu komut sadece "${kayıtKanalı?.name}" kanalında kullanılabilir.`, ephemeral: true });
-      }
-
-      const modal = new ModalBuilder()
-        .setTitle('Kayıt Formu')
-        .setCustomId(`modal-${interaction.user.id}`);
-
-      const nameInput = new TextInputBuilder()
-        .setCustomId('nameInput')
-        .setRequired(true)
-        .setPlaceholder('John')
-        .setLabel('Lütfen adınızı giriniz')
-        .setStyle(TextInputStyle.Short);
-
-      const surnameInput = new TextInputBuilder()
-        .setCustomId('surnameInput')
-        .setRequired(false)
-        .setPlaceholder('Doe')
-        .setLabel('Lütfen soyadınızı giriniz')
-        .setStyle(TextInputStyle.Short);
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(nameInput),
-        new ActionRowBuilder().addComponents(surnameInput)
-      );
-
-      await interaction.showModal(modal);
-
-      const filter = i => i.customId === `modal-${interaction.user.id}` && i.user.id === interaction.user.id;
-      const modalInteraction = await interaction.awaitModalSubmit({ filter, time: 30_000 });
-
-      const nameInputValue = modalInteraction.fields.getTextInputValue('nameInput');
-      const surnameInputValue = modalInteraction.fields.getTextInputValue('surnameInput');
-
-      try {
-        await modalInteraction.member.setNickname(`${nameInputValue} ${surnameInputValue || ''}`.trim());
-        await modalInteraction.member.roles.add(data.kayıtRole);
-
-        await modalInteraction.user.send(`✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameInputValue} ${surnameInputValue || ''}**\nRolünüz verildi!`);
-        await modalInteraction.reply({ content: 'Kayıt işleminiz tamamlandı. Detaylar DM’den gönderildi.', ephemeral: true });
-
-        await new LogBuilder(interaction.guild)
-          .setTitle("✅ Yeni Kayıt Yapıldı")
-          .setDescription(`**${modalInteraction.user.tag}** adlı kullanıcı kayıt oldu.`)
-          .addField("Yeni İsim", `${nameInputValue} ${surnameInputValue || ''}`.trim(), true)
-          .addField("Verilen Rol", `<@&${data.kayıtRole}>`, true)
-          .addField("Kayıt Kanalı", kayıtKanalı ? kayıtKanalı.name : "Bilinmiyor", true)
-          .setColor("Green")
-          .send();
-
-      } catch (error) {
-        let sebep = 'Bilinmeyen hata';
-        if (error.code === 50013) {
-          sebep = 'Botun izni yok veya kullanıcı rolü çok yüksek';
-          await modalInteraction.reply({ content: 'Botun işlem yapmak için yeterli izni yok veya kullanıcı rolü çok yüksek.', ephemeral: true });
-        } else {
+        try {
+          if (!data) {
+            data = new registrationModel({ guildID: interaction.guild.id, kayıtChannel: kayıtChannel.id, kayıtRole: kayıtRole.id });
+          } else {
+            data.kayıtChannel = kayıtChannel.id;
+            data.kayıtRole = kayıtRole.id;
+          }
+          await data.save();
+          await interaction.reply({ content: `Kayıt kanalı ${kayıtChannel} ve kayıt rolü ${kayıtRole} olarak ayarlandı!`, ephemeral: true });
+        } catch (error) {
           console.error(error);
-          await modalInteraction.reply({ content: 'Bir hata oluştu, lütfen daha sonra tekrar deneyin.', ephemeral: true });
+          await interaction.reply({ content: 'Bir hata oluştu, tekrar deneyin.', ephemeral: true });
         }
-
-        await new LogBuilder(interaction.guild)
-          .setTitle("⚠️ Kayıt Başarısız")
-          .setDescription(`**${modalInteraction.user.tag}** adlı kullanıcı kayıt olamadı.`)
-          .addField("Sebep", sebep, true)
-          .addField("İsim Girişi", `${nameInputValue} ${surnameInputValue || ''}`.trim(), true)
-          .setColor("Red")
-          .send();
+        break;
       }
-    } catch (error) {
-      let hataSebebi = 'Bilinmeyen hata';
-      if (error.code === 'INTERACTION_COLLECTOR_ERROR' || error.code === 'INTERACTION_TIMEOUT') {
-        hataSebebi = 'Form doldurma süresi doldu';
-        await interaction.followUp({ content: 'Form doldurma süresi doldu.', ephemeral: true });
-      }
-      console.error(error);
 
-      await new LogBuilder(interaction.guild)
-        .setTitle("⚠️ Kayıt Başarısız")
-        .setDescription(`**${interaction.user.tag}** kayıt olurken hata aldı.`)
-        .addField("Sebep", hataSebebi, true)
-        .setColor("Red")
-        .send();
+      case 'gönder': {
+        await interaction.deferReply({ ephemeral: true });
+        if (!data) return interaction.editReply({ content: 'Kayıt ayarları yapılmamış. Önce /kayıt ayarla kullanın.', ephemeral: true });
+
+        const targetChannel = interaction.guild.channels.cache.get(data.kayıtChannel);
+
+        const rawDescription = interaction.options.get('açıklama').value;
+        const description = rawDescription.replace(/\\n/g, '\n');
+
+        const embed = new EmbedBuilder()
+          .setTitle(interaction.options.getString('başlık'))
+          .setDescription(description);
+
+        let color = interaction.options.getString('renk') || 'Random';
+        if (color === 'Random') color = Math.floor(Math.random() * 0xffffff);
+        else if (color === 'Default') color = undefined;
+        embed.setColor(color);
+
+        if (interaction.options.getString('url')) embed.setURL(interaction.options.getString('url'));
+        if (interaction.options.getString('küçük-resim')) embed.setThumbnail(interaction.options.getString('küçük-resim'));
+        if (interaction.options.getString('resim')) embed.setImage(interaction.options.getString('resim'));
+        if (interaction.options.getString('author_name')) embed.setAuthor({
+          name: interaction.options.getString('author_name'),
+          iconURL: interaction.options.getString('author_icon') || undefined,
+          url: interaction.options.getString('author_url') || undefined
+        });
+        if (interaction.options.getString('footer_text')) embed.setFooter({
+          text: interaction.options.getString('footer_text'),
+          iconURL: interaction.options.getString('footer_icon') || undefined
+        });
+        if (interaction.options.getBoolean('zaman-damgasi')) embed.setTimestamp();
+
+        const button = new ButtonBuilder()
+          .setCustomId('registerButton')
+          .setLabel('Kayıt Formunu Aç')
+          .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(button);
+
+        await targetChannel.send({ embeds: [embed], components: [row] });
+        await interaction.editReply({ content: '✅ Kayıt mesajı başarıyla gönderildi!' });
+        break;
+      }
+
+      case 'sil': {
+        try {
+          const result = await registrationModel.findOneAndDelete({ guildID: interaction.guild.id });
+          if (result) await interaction.reply({ content: 'Kayıt sistemi silindi.', ephemeral: true });
+          else await interaction.reply({ content: 'Kayıt sistemi zaten ayarlı değil.', ephemeral: true });
+        } catch (error) {
+          console.error(error);
+          await interaction.reply({ content: 'Bir hata oluştu.', ephemeral: true });
+        }
+        break;
+      }
+
+      default:
+        await interaction.reply({ content: 'Geçersiz alt komut.', ephemeral: true });
     }
   }
 };

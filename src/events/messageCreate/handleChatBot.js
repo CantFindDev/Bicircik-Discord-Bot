@@ -1,7 +1,7 @@
 require('dotenv/config');
 const { Client, Message } = require('discord.js');
 const { OpenAI } = require('openai');
-const signUpSettings = require('../../schemas/signUpSchema');
+const signUpSettings = require('../../schemas/registrationSchema');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
