@@ -4,11 +4,7 @@ const {
     ModalBuilder,
     TextInputBuilder,
     ActionRowBuilder,
-    TextInputStyle,
-    EmbedBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    PermissionsBitField
+    TextInputStyle
 } = require("discord.js");
 
 const signUpModel = require('../../schemas/registrationSchema');
@@ -80,42 +76,57 @@ module.exports = async (client, interaction) => {
 
         await interaction.showModal(modal);
 
-        const filter = i => i.customId === `modal-${interaction.user.id}` && i.user.id === interaction.user.id;
-        const modalInteraction = await interaction.awaitModalSubmit({ filter, time: 30_000 });
+        try {
+            const filter = i => i.customId === `modal-${interaction.user.id}` && i.user.id === interaction.user.id;
+            const modalInteraction = await interaction.awaitModalSubmit({ filter, time: 90_000 });
 
-        const nameValue = modalInteraction.fields.getTextInputValue('nameInput');
-        const surnameValue = modalInteraction.fields.getTextInputValue('surnameInput');
-        const reasonValue = modalInteraction.fields.getTextInputValue('reasonInput');
+            const nameValue = modalInteraction.fields.getTextInputValue('nameInput');
+            const surnameValue = modalInteraction.fields.getTextInputValue('surnameInput');
+            const reasonValue = modalInteraction.fields.getTextInputValue('reasonInput');
 
-        await modalInteraction.deferReply({ ephemeral: true });
+            await modalInteraction.deferReply({ ephemeral: true });
 
-        await modalInteraction.member.setNickname(`${nameValue} ${surnameValue || ''}`.trim());
-        await modalInteraction.member.roles.add(data.kayıtRole);
+            await modalInteraction.member.setNickname(`${nameValue} ${surnameValue || ''}`.trim());
+            await modalInteraction.member.roles.add(data.kayıtRole);
 
-        data.userAnswers.push({
-            userID: modalInteraction.user.id,
-            name: nameValue,
-            surname: surnameValue || '',
-            joinReason: reasonValue
-        });
-        await data.save();
+            data.userAnswers.push({
+                userID: modalInteraction.user.id,
+                name: nameValue,
+                surname: surnameValue || '',
+                joinReason: reasonValue
+            });
+            await data.save();
 
-        await modalInteraction.user.send(`✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`);
+            await modalInteraction.user.send(`✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`);
 
-        await new LogBuilder(interaction.guild)
-            .setTitle("✅ Yeni Kayıt Yapıldı")
-            .setDescription(`**${modalInteraction.user.tag}** sunucuya başarıyla kayıt oldu.`)
-            .addField("• Yeni İsim", `${nameValue} ${surnameValue || ''}`.trim(), true)
-            .addField("• Verilen Rol", `<@&${data.kayıtRole}>`, true)
-            .addField("• Kayıt Kanalı", kayıtKanalı ? `<#${kayıtKanalı.id}>` : "Bilinmiyor", true)
-            .addField("• BUG Zone'yi Nereden Öğrendiniz?", reasonValue || "Belirtilmedi", false)
-            .setColor("Green")
-            .send();
+            await new LogBuilder(interaction.guild)
+                .setTitle("✅ Yeni Kayıt Yapıldı")
+                .setDescription(`**${modalInteraction.user.tag}** sunucuya başarıyla kayıt oldu.`)
+                .addField("• Yeni İsim", `${nameValue} ${surnameValue || ''}`.trim(), true)
+                .addField("• Verilen Rol", `<@&${data.kayıtRole}>`, true)
+                .addField("• Kayıt Kanalı", kayıtKanalı ? `<#${kayıtKanalı.id}>` : "Bilinmiyor", true)
+                .addField("• BUG Zone'yi Nereden Öğrendiniz?", reasonValue || "Belirtilmedi", false)
+                .setColor("Green")
+                .send();
 
-        await modalInteraction.editReply({ content: "Kayıt işleminiz tamamlandı! Detaylar DM'den gönderildi." });
+            await modalInteraction.editReply({ content: "Kayıt işleminiz tamamlandı! Detaylar DM'den gönderildi." });
+
+        } catch (err) {
+            if (err.code === 'InteractionCollectorError') {
+                await new LogBuilder(interaction.guild)
+                    .setTitle("ℹ️ Kayıt İptal Edildi")
+                    .setDescription(`**${interaction.user.tag}** kayıt formunu doldurmadı: süre doldu.`)
+                    .setColor("Yellow")
+                    .send();
+
+                return interaction.followUp({ content: "⏳ Kayıt işlemi zaman aşımına uğradı.", ephemeral: true });
+            } else {
+                throw err; // diğer hatalar üstteki catch'e gidecek
+            }
+        }
 
     } catch (error) {
-        let hataSebebi = ['INTERACTION_COLLECTOR_ERROR', 'INTERACTION_TIMEOUT'].includes(error.code) ? 'Form doldurma süresi doldu' : 'Bilinmeyen hata';
+        let hataSebebi = (error.code === 'InteractionCollectorError') ? 'Form doldurma süresi doldu' : 'Bilinmeyen hata';
 
         await new LogBuilder(interaction.guild)
             .setTitle("⚠️ Kayıt Başarısız")
@@ -125,6 +136,8 @@ module.exports = async (client, interaction) => {
             .send();
 
         console.error(error);
-        if (!interaction.replied) await interaction.reply({ content: `❌ Kayıt yapılamadı: ${hataSebebi}`, ephemeral: true });
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: `❌ Kayıt yapılamadı: ${hataSebebi}`, ephemeral: true });
+        }
     }
 };
