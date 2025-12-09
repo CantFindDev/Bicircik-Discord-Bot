@@ -14,24 +14,33 @@ module.exports = {
     options: [
         {
             name: 'gönder',
-            description: 'açılır menü içeriği için isim',
+            description: 'Destek talebi mesajını oluşturmanı sağlar',
             type: ApplicationCommandOptionType.Subcommand,
             
             options: [
-                {
-                    name: 'name',
-                    description: 'açılır menü içeriği için isim',
-                    required: true,
+                 {
+                    name: 'title',
+                    description: 'embed title',
+                    required: false,
                     type: ApplicationCommandOptionType.String,
                 },
-                {
+                 {
                     name: 'message',
-                    description: 'embed içine eklenecek özel mesaj',
+                     description: 'embed içine eklenecek özel mesaj',
+                    required: false,
                     type: ApplicationCommandOptionType.String,
                 },
+                {
+                    name: 'dropdown-text',
+                    description: 'açılır menü içeriği için isim',
+                    required: false,
+                    type: ApplicationCommandOptionType.String,
+                },
+            
                 {
                     name: 'channel',
                     description: 'mesajın gönderileceği kanal',
+                    required: false,
                     type: ApplicationCommandOptionType.Channel,
                     channel_types: [ChannelType.GuildText],
                 },
@@ -85,19 +94,20 @@ module.exports = {
                     return await interaction.reply({ content: 'Geçersiz kanal seçildi veya oraya mesaj gönderemiyorum.', ephemeral: true });
                 }
 
-                const ticketName = interaction.options.getString('name');
+                const ticketDropdownName = interaction.options.getString('dropdown-text') || 'Destek Talebi!';
+                const ticketTitle = interaction.options.getString('title') || 'Destek Talebi Oluştur!';
                 const ticketMessage = interaction.options.getString('message') || 'Sunucu ekibiyle konuşmak için bir bilet oluşturun! Aşağıdan seçip neden bilet oluşturduğunuzu yazabilirsiniz.';
 
                 const select = new ActionRowBuilder()
                     .addComponents(
                         new StringSelectMenuBuilder()
                             .setCustomId('ticketCreateSelect')
-                            .setPlaceholder(ticketName)
+                            .setPlaceholder(ticketDropdownName)
                             .setMinValues(0)
                             .addOptions(
                                 {
-                                    label: 'Biletinizi oluşturun',
-                                    description: 'Bilet oluşturma işlemine başlamak için tıklayın',
+                                    label: 'Destek Talebi Oluşturun',
+                                    description: 'Destek talebi oluşturmak için tıklayın',
                                     value: 'createTicket'
                                 }
                             )
@@ -105,7 +115,7 @@ module.exports = {
     
                 const embed = new EmbedBuilder()
                     .setColor('Blurple')
-                    .setTitle('Bilet oluştur!')
+                    .setTitle(ticketTitle)
                     .setDescription(ticketMessage)
                     .setFooter({ text: interaction.guild.name, iconURL: interaction.guild.iconURL() });
     

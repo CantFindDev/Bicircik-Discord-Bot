@@ -9,7 +9,7 @@ module.exports = async (client, oldMember, newMember) => {
 
         await new LogBuilder(newMember.guild)
             .setTitle("✏️ Kullanıcı Takma Adı Değişti")
-            .setDescription(`**${newMember.user.tag}** takma adını değiştirdi`)
+            .setDescription(`**<@${newMember.user.id}>** takma adını değiştirdi`)
             .addField("Eski Takma Ad", oldNick, true)
             .addField("Yeni Takma Ad", newNick, true)
             .setColor("Yellow")

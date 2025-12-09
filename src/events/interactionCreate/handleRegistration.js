@@ -97,11 +97,22 @@ module.exports = async (client, interaction) => {
             });
             await data.save();
 
-            await modalInteraction.user.send(`✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`);
+            try {
+                await modalInteraction.user.send(
+                    `✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`
+                );
+            } catch (err) {
+                console.warn(`Kullanıcıya DM gönderilemedi: ${modalInteraction.user.tag}`);
+                await modalInteraction.followUp({
+                    content: `✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`,
+                    ephemeral: true
+                });
+            }
+
 
             await new LogBuilder(interaction.guild)
                 .setTitle("✅ Yeni Kayıt Yapıldı")
-                .setDescription(`**${modalInteraction.user.tag}** sunucuya başarıyla kayıt oldu.`)
+                .setDescription(`**<@${modalInteraction.user.id}>** sunucuya başarıyla kayıt oldu.`)
                 .addField("• Yeni İsim", `${nameValue} ${surnameValue || ''}`.trim(), true)
                 .addField("• Verilen Rol", `<@&${data.kayıtRole}>`, true)
                 .addField("• Kayıt Kanalı", kayıtKanalı ? `<#${kayıtKanalı.id}>` : "Bilinmiyor", true)
