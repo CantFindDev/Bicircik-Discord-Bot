@@ -23,10 +23,24 @@ function createUserSystemMessage(username) {
  // const upcomingEvents = `BUGZone yakın zamanda Zone’o’ween Game Jam adında Haloweende düzenlenen ve 48 saat süren bir Game Jam düzenleyecek. kostüm yarışmaları, ödüller ve sürpriz aktivitelerle dolu, 125 kişilik sınırlı kontenjanlı bir etkinlik olduğunu söyle. Etkinlik 31 Ekim’de Bahçeşehir Üniversitesi Galata Kampüsü’nde başlayacak ve 2 kasıma kadar sürecek ve etkinlik akışında öncelikle bir kostüm yarışması ardından temanın açıklanacağı ve game jamin başlayacağından bahset  başvuruların 27 Ekim 23:59a kadar açık olduğunu ve başvurmak için ona linktreeden ulaşabileceğini söyle [linktree](https://linktr.ee/bugzone) ayrıca lütfen bu mesajı uygun emojiler kullanarak madde madde yaz ayrıca yıl belirtme` 
 
  
-  var currentdate = new Date();
-  const dateInfo = `Bu günün tarihi ${currentdate.toTimeString()} biri tarihi sorarsa ya da etkinlik bilgisi isterse diye yazdım bundan başka tarih hesaba katma lütfen`
-  const upcomingEvents = `Lütfen sadece en yakın zamandaki etkinliği söyle. ancak birisi ısrarla etkinliklerin hepsini merak ederse tabiki o zaman diğerlerini de söyle
+ var currentdate = new Date();
+const formattedDate = currentdate.toLocaleDateString('tr-TR', {
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+});
 
+const dateInfo = `
+    ### GÜNCEL ZAMAN VE TARİH BİLGİSİ
+    **Şu anki tam tarih ve saatiniz:** ${formattedDate}. 
+    Bu bilgiyi güncel zamanı veya etkinlik tarihlerini hesaplarken kullanmalısın.
+    `;
+  const upcomingEvents = `Lütfen sadece en yakın zamandaki etkinliği söyle. ancak birisi ısrarla etkinliklerin hepsini merak ederse tabiki o zaman diğerlerini de söyle
+Ayrıca etkinlikleri açıklarken bol emojili ve boşluklu süslü textler kullan.
   BUGZone’un önümüzdeki dönem için dolu dolu bir etkinlik takvimi var! En yakın ve en önemli etkinliklerden bazıları:
 
 * **BUG Zone X Arkhaus Oyun Gecesi** 🎮
