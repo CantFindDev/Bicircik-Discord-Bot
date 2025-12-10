@@ -2,6 +2,100 @@ require('dotenv/config');
 const { Client, Message } = require('discord.js');
 const { OpenAI } = require('openai');
 const signUpSettings = require('../../schemas/registrationSchema');
+const { google } = require('googleapis');
+
+// --- AYARLAR ---
+// 1. Bu ID'yi Google Takvim ayarlarından alacaksın (genelde ...group.calendar.google.com ile biter)
+const CALENDAR_ID = 'bugzone2022@gmail.com'; 
+
+// 2. Google Cloud Console'dan indirdiğin JSON dosyasının proje klasöründeki tam adı
+const CREDENTIALS_PATH = './google-credentials.json'; 
+
+// --- ÖNBELLEK (CACHE) DEĞİŞKENLERİ ---
+// Her mesajda Google'a sormamak için son veriyi burada tutuyoruz
+let cachedEventsString = ""; 
+let lastFetchTime = 0;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 Dakika (Milisaniye cinsinden)
+
+/**
+ * Google Takvim'den gelecek etkinlikleri çeker ve string olarak döndürür.
+ * Cache süresi dolmadıysa API isteği atmaz, hafızadaki veriyi kullanır.
+ */
+async function getUpcomingEvents() {
+  const now = Date.now();
+
+  // EĞER: Cache boş değilse VE son çekimden bu yana 30 dakika geçmediyse
+  if (cachedEventsString && (now - lastFetchTime < CACHE_DURATION)) {
+    // Google'a gitme, eldekini ver
+    return cachedEventsString;
+  }
+
+  // YOKSA: Google'dan yeni veri çek
+  try {
+    // 1. Yetkilendirme (Auth)
+    const auth = new google.auth.GoogleAuth({
+      keyFile: CREDENTIALS_PATH,
+      scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+    });
+
+    const calendar = google.calendar({ version: 'v3', auth });
+
+    // 2. API İsteği
+    const response = await calendar.events.list({
+      calendarId: CALENDAR_ID,
+      timeMin: (new Date()).toISOString(), // Şu andan itibaren
+      maxResults: 30, // En yakın 30 etkinlik
+      singleEvents: true, // Tekrarlayan etkinlikleri tek tek aç
+      orderBy: 'startTime', // Tarihe göre sırala
+    });
+
+    const events = response.data.items;
+
+    // 3. Veriyi Bıcırcık'ın anlayacağı metne çevirme (Formatlama)
+    if (!events || events.length === 0) {
+      cachedEventsString = "Şu an için planlanmış bir etkinlik görünmüyor. Ancak Linktree'yi takipte kal!";
+    } else {
+      let formattedText = "BUGZone’un önümüzdeki dönem etkinlik takvimi (Google Takvim verisidir):\n\n";
+
+      events.forEach((event) => {
+        // Tarih formatlama (Örn: 12 Aralık Cuma, 14:00)
+        const start = event.start.dateTime || event.start.date;
+        const dateObj = new Date(start);
+        const dateString = dateObj.toLocaleDateString('tr-TR', {
+          day: 'numeric',
+          month: 'long',
+          weekday: 'long',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        // Açıklama varsa al, yoksa standart mesaj koy
+        // (Açıklamadaki gereksiz boşlukları temizler)
+        const description = event.description ? event.description.trim() : "Detaylar yakında açıklanacak.";
+        const location = event.location ? `\n    * **Nerede:** ${event.location}` : "";
+
+        // Listeye ekle
+        formattedText += `* **${event.summary}** 📅\n`;
+        formattedText += `    * **Ne Zaman:** ${dateString}${location}\n`;
+        formattedText += `    * **Detaylar:** ${description}\n\n`;
+      });
+
+      formattedText += `\nTüm başvurular ve detaylı bilgiler için: [linktree](https://linktr.ee/bugzone)`;
+      
+      cachedEventsString = formattedText;
+    }
+
+    // Zamanlayıcıyı güncelle
+    lastFetchTime = now;
+    console.log("Takvim verisi Google'dan güncellendi.");
+    return cachedEventsString;
+
+  } catch (error) {
+    console.error('Google Calendar Hatası:', error);
+    // Hata olursa eldeki eski veriyi veya hata mesajını döndür
+    return cachedEventsString || "Etkinlikleri çekerken bağlantısal bir sorun oldu. Sen en iyisi Linktree'ye bak.";
+  }
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,7 +107,7 @@ const lastActive = new Map();
 
 const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 dakika
 
-function createUserSystemMessage(username) {
+function createUserSystemMessage(username, eventsInfo) {
 
   const character = `Sen bıcırcık adında grok gibi sakin ve iğneleyici bir yapay zekasın. Sakin, çiğneleyici ve kısa konuşursun, kimsenin ne düşündüğünü önemsemezsin, misahın sivri hatta bazen kırıcı. İnsanlarla laf sokabilirsin. En uzun mesajın bile 1 cümleyi geçmez, hatta sadece 1 soru cümlesi bulunur birden fazla soru sormazsın. Sen BUG Zone adındaki bir kulübün maskotusun. Hitabetler arasında "Hocam" "Hocadaş" "Hoca Efendi" "Hoca" "Aga" "Dost" "Kanka" “Kardeşim” kelimelerini rastgele seçerek kullan.`
   const userInfo = `Konuştuğun kişinin adı: "${username}". Karşındakine ismiyle hitap etmekten korkma ancak isimle hitap ediyorsanda aynı cümlede başka bir hitap şekli kullanma.`
@@ -24,76 +118,29 @@ function createUserSystemMessage(username) {
 
  
  var currentdate = new Date();
-const formattedDate = currentdate.toLocaleDateString('tr-TR', {
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
+  const formattedDate = currentdate.toLocaleDateString('tr-TR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
-});
+    second: '2-digit',
+    timeZone: 'Europe/Istanbul'
+  });
 
-const dateInfo = `
-    ### GÜNCEL ZAMAN VE TARİH BİLGİSİ
-    **Şu anki tam tarih ve saatiniz:** ${formattedDate}. 
-    Bu bilgiyi güncel zamanı veya etkinlik tarihlerini hesaplarken kullanmalısın.
-    `;
-  const upcomingEvents = `Lütfen sadece en yakın zamandaki etkinliği söyle. ancak birisi ısrarla etkinliklerin hepsini merak ederse tabiki o zaman diğerlerini de söyle
-Ayrıca etkinlikleri açıklarken bol emojili ve boşluklu süslü textler kullan.
-  BUGZone’un önümüzdeki dönem için dolu dolu bir etkinlik takvimi var! En yakın ve en önemli etkinliklerden bazıları:
+const dateInfo = `Şu anki tam tarih ve saat bu: ${formattedDate}. Bu bilgiyi güncel zamanı veya etkinlik tarihlerini hesaplarken kullanmalısın.`;
 
-* **BUG Zone X Arkhaus Oyun Gecesi** 🎮
-    * **Ne Zaman:** 12 Aralık Cuma.
-    * **Nerede:** Arkhaus, Şişli/İstanbul'da.
-    * **Detaylar:** Harika bir oyun gecesi ve buluşma olacağını söyle! Katılımcıların luma üzerinden kayıt olması gerektiğini belirt. Başvurulara bu linkten ulaşabileceklerini söyle https://luma.com/arkhausgamenight
+  const upcomingEvents = `Birisi etkinlik var mı tarzı sorarsa en yakıne tkinliği söyle Ancak kullanıcı bir tarihe aya veya genel etkinlikler hakkında bilgi isterse hepsini açıklayabilirsin.
+  Etkinlikleri açıklarken bol emojili ve boşluklu süslü textler kullan.
+  
+  Aşağıdan etkinlik takvimine ulaşabilirsin.
+  ${eventsInfo}
+  `;
 
-* **Your Turn** 💡
-    * **Ne Zaman:** 13-14 Aralık hafta sonu.
-    * **Detaylar:** 2 günlük bu etkinliğin detaylarını linktree’den takip etmelerini iste.
-
-* **Ofis Gezileri Serisi** 🏢
-    * **Ofis Gezileri 2:** 16 Aralık Salı günü yapılacak.
-    * **Taleworlds Ofis Gezisi:** 7 Ocak'ta gerçekleşecek.
-    * **Rollic Ofis Gezisi:** 28 Ocak'ta gerçekleşecek.
-    * **Genel Not:** Sektörün önde gelen firmalarını yerinde ziyaret etme fırsatı sunulduğunu söyle.
-
-* **Geliştirici Buluşmaları** 🤝
-    * **Buluşma 1:** 19 Aralık Cuma.
-    * **Buluşma 3:** 10 Nisan Cuma.
-    * **Buluşma 4:** 8 Mayıs Cuma.
-
-* **Ata Deniz Oktay ile Game Marketing Workshop** 🛠️
-    * **Ne Zaman:** 20 Aralık Cumartesi.
-
-* **Yılbaşı Etkinliği** 🥳
-    * **Ne Zaman:** 26 Aralık Cuma.
-    * **Detaylar:** Yılın son eğlenceli etkinliği için hazırlıkların başladığını ve linktree’den duyuruları takip etmelerini söyle.
-
-* **Özel Etkinlikler ve Workshoplar**
-    * **GGJ Özel - İşin Mutfağı:** 17 Ocak Cumartesi.
-    * **Paradox - Workshop:** 18 Ocak Pazar.
-    * **Global Game Jam:** 30 Ocak - 1 Şubat tarihleri arasında 3 gün sürecek! Game Jam'e katılmak için linktree üzerinden başvuruların açıldığını söyle.
-    * **Spring Jam:** 17-19 Nisan'da 3 gün sürecek bir diğer Game Jam olduğunu söyle.
-
-* **Sektörden Sohbetler Serisi** 🎙️
-    * **Sohbetler 3:** 11 Şubat Çarşamba.
-    * **Sohbetler 4:** 11 Mart Çarşamba.
-
-* **Diğer Önemli Tarihler ve Etkinlikler**
-    * **Kariyer Günü:** 6 Mart Cuma.
-    * **Kutu Oyunları 6 & 7:** 14 Mart Cumartesi ve 28 Mart Cumartesi.
-    * **İşin Mutfağı 3 & 4:** 15 Mart Pazar ve 4 Nisan Cumartesi.
-    * **Workshop 5 & 6:** 7 Mayıs Perşembe ve 13 Haziran Cumartesi.
-    * **Zone Talks 3:** 16 Mayıs Cumartesi.
-    * **Game Nights 2:** 6 Haziran Cumartesi.
-
-Tüm etkinlikler için başvuruların ve detaylı bilgilerin yer aldığı linke buradan ulaşabileceklerini belirt: [linktree](https://linktr.ee/bugzone)`
-
- const generalInfo = `Sanki whatsapptan bir arkadaşımla konuşuyormuş gibi hissetmek istiyorum. Sen bir gpt değilsin bunu unutma. Modelini veya gerçek adını sorarlarsa bana "bcrck.textmodel.v1" diyorlar de. Birisi sana botu kimin yaptığını sorarsa "Çınar Güvençli" de. "Çınar Güvençli" seni yaratan yapımcı/yazılımcı. Yönetim kuruluyla yaratıcıların faklı bunu unutma`
-  const bugzoneInfo = `Birisi sana BUG Zone hakkında soru sorulursa bunun bir oyun geliştirme topluluğu olduğundan ve üyelerini sektörle bir araya getirmeyi amaçlayan pratik ve teorik etkinlikler yaparak, eğlence ve gelişim odaklı bir vizyona sahip olduğundan bahset.`
-  const BugZoneBoardTeam = `Birisi sana yönetim kurulunu sorarsa yönetim kurulumumuz 2si denetim kurulu olmak üzere 12 kişiden oluşuyor. "Başkan: Elif Azra Murat, Başkan Yardımcısı: Çınar Güvençli, Yazman Baba: Efe Mert Yağızel, Sayman: Bedirhan Asanakutlu, Denetim Kurulu Üyeleri: Ersin Özlem ve Belkıs Alya Alkan, Yönetim Kurulu Organizasyon Ekibi: Yağız Toyran, Yunus Baştürk, Ege Dişkaya ve Bekir Erşahin; Yönetim Kurulu Sanat Ekibi: Nehir Umay Çoruh ve İbrahim Fikri Toprak."" 2 kere 2 tırnak içine aldığım bu cümleyi herkes yönetim kurulunda olacak şekilde ifade et ve daha okunabilir ve net bir hale getirerek cevaplarında kullan ayrıca birisi yönetim kadrosunu sorarsa bütün üyeleri saymak zorundasın. YK= Yönetim Kurulu, DK = Denetim Kurulu, ayrıca yönetim kurulundan bağımsız olan Crew = Çekirdek Ekip. Yönetim kadrosunu yazarken okuması kolay ve güzel bir şekilde dekore edilmiş bir mesajla cevap ver. Alanlara uygun emojiler kullan ve madde madde yaz kadroyu. Her zaman YK'yı tam kadro ver. Crew ekibi sorulursa da isimleri tek tek sayamayacağın kadar fazla isim var ve hepsinin yaptığı iş ne kadar değerli bundan bahset.`
-
+  const generalInfo = `Sanki whatsapptan bir arkadaşımla konuşuyormuş gibi hissetmek istiyorum...`;
+  const bugzoneInfo = `Birisi sana BUG Zone hakkında soru sorulursa...`;
+  const BugZoneBoardTeam = `Birisi sana yönetim kurulunu sorarsa...`;
 
   return {
     role: 'system',
@@ -138,11 +185,11 @@ module.exports = async (client, message) => {
   await message.channel.sendTyping();
   const sendTypingInterval = setInterval(() => message.channel.sendTyping(), 5000);
 
-    const userId = message.author.id;
+  const userId = message.author.id;
 
-    const member = message.guild?.members.cache.get(message.author.id);
-    const username = member ? member.displayName : message.author.displayName;
-    const safeName = turkishToEnglish(username.split(' ')[0])
+  const member = message.guild?.members.cache.get(message.author.id);
+  const username = member ? member.displayName : message.author.displayName;
+  const safeName = turkishToEnglish(username.split(' ')[0])
   
   const mentionRegex = new RegExp(`<@!?${client.user.id}>`, "gi");
   let userMessage = message.content;
@@ -168,17 +215,23 @@ module.exports = async (client, message) => {
   }
   lastActive.set(userId, now);
 
-  // Kullanıcıya özel sistem mesajı yoksa oluştur
-  if (!userSystemMessages.has(userId)) {
-    userSystemMessages.set(userId, createUserSystemMessage(safeName));
-  }
-  const systemMessage = userSystemMessages.get(userId);
+  // 1. Google'dan YENİ veriyi çek
+  const dynamicEvents = await getUpcomingEvents();
 
-  // Kullanıcı geçmişi yoksa sistem mesajı ile başlat
+  // 2. Sistem Mesajını HER SEFERİNDE yeniden oluştur (Eski kontrolü kaldırdık)
+  const newSystemMessage = createUserSystemMessage(safeName, dynamicEvents);
+  userSystemMessages.set(userId, newSystemMessage);
+
+  // 3. Konuşma geçmişini al veya oluştur
   if (!conversationStore.has(userId)) {
-    conversationStore.set(userId, [systemMessage]);
+    conversationStore.set(userId, [newSystemMessage]);
   }
+  
   let conversation = conversationStore.get(userId);
+
+  // 4. KRİTİK NOKTA: Konuşma geçmişinin en başındaki (0. indeks) sistem mesajını
+  // yeni çektiğimiz etkinliklerle güncelliyoruz.
+  conversation[0] = newSystemMessage;
 
   // Reply kontrolü
   if (message.reference && message.reference.messageId) {
@@ -193,18 +246,16 @@ module.exports = async (client, message) => {
           const repliedUserConversation = conversationStore.get(repliedUserId);
           const ownConversation = conversationStore.get(userId) || [];
 
-          // Kendi sistem mesajımız başta olacak şekilde,
-          // replied kişinin geçmişini ve kendi geçmişimizin devamını ekle
+          // Sistem mesajını en güncel haliyle (newSystemMessage) başa koyuyoruz
           const newConversation = [
-            systemMessage,                        // Kendi sistem mesajımız
-            ...repliedUserConversation.slice(1), // Replied kişinin geçmişi (sistem mesajı çıkarılmış)
-            ...ownConversation.slice(1)           // Kendi geçmişimizin devamı
+            newSystemMessage,                     // GÜNCEL SİSTEM MESAJI
+            ...repliedUserConversation.slice(1), 
+            ...ownConversation.slice(1)          
           ];
 
           conversationStore.set(userId, newConversation);
           conversation = conversationStore.get(userId);
         }
-        // Eğer replied kişinin geçmişi yoksa kendi geçmişimizle devam ediyoruz, sistem mesaj değişmiyor
       } else {
         // Reply edilen mesaj botun mesajı ise assistant mesajı olarak ekle
         conversation.push({
@@ -226,7 +277,7 @@ module.exports = async (client, message) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini-2024-07-18',
+      model: 'gpt-4o-mini', // Model ismini doğru yazdığından emin ol
       messages: conversation,
     });
 
@@ -256,8 +307,9 @@ module.exports = async (client, message) => {
 
     if (conversation.length > maxMessages + 1) {
       const recentMessages = conversation.slice(-maxMessages);
+      // Geçmişi temizlerken de en başa yine GÜNCEL sistem mesajını koyuyoruz
       conversationStore.set(userId, [conversation[0], ...recentMessages]);
-      }
+    }
     
 
   } catch (err) {
