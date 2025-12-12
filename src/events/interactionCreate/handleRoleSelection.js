@@ -2,28 +2,41 @@ const rolAlSchema = require('../../schemas/roleSchema');
 
 module.exports = async (client, interaction) => {
   if (interaction.isStringSelectMenu() && interaction.customId === 'rolAlSelect') {
-    const selectedRoleIds = interaction.values;
-    const member = interaction.member;
-    if (!member) return;
+    
+    try {
+      await interaction.deferReply({ ephemeral: true });
 
-    const data = await rolAlSchema.findOne({ guildID: interaction.guild.id });
-    if (!data) return interaction.reply({ content: 'Rol alma sistemi ayarlı değil.', ephemeral: true });
+      const selectedRoleIds = interaction.values;
+      const member = interaction.member;
+      if (!member) return;
 
-    const systemRoleIds = data.roles.map(r => r.roleId);
+      const data = await rolAlSchema.findOne({ guildID: interaction.guild.id });
 
-    for (const roleId of systemRoleIds) {
-      if (member.roles.cache.has(roleId) && !selectedRoleIds.includes(roleId)) {
-        await member.roles.remove(roleId).catch(() => {});
+      if (!data) {
+        return interaction.editReply({ content: 'Rol alma sistemi ayarlı değil.' });
       }
-    }
 
-    for (const roleId of selectedRoleIds) {
-      if (!member.roles.cache.has(roleId)) {
-        await member.roles.add(roleId).catch(() => {});
+      const systemRoleIds = data.roles.map(r => r.roleId);
+
+      for (const roleId of systemRoleIds) {
+        if (member.roles.cache.has(roleId) && !selectedRoleIds.includes(roleId)) {
+          await member.roles.remove(roleId).catch(() => {});
+        }
       }
-    }
 
-    await interaction.reply({ content: 'Roller başarıyla güncellendi.', ephemeral: true });
+      for (const roleId of selectedRoleIds) {
+        if (!member.roles.cache.has(roleId)) {
+          await member.roles.add(roleId).catch(() => {});
+        }
+      }
+
+      await interaction.editReply({ content: 'Roller başarıyla güncellendi.' });
+
+    } catch (error) {
+      console.error("Rol güncelleme hatası:", error);
+      await interaction.editReply({ content: 'Bir hata oluştu.' }).catch(() => {});
+    }
+    
     return;
   }
 };
