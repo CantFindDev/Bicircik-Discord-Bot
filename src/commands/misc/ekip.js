@@ -1,6 +1,6 @@
 const { 
   ChannelType, PermissionFlagsBits, ApplicationCommandOptionType, 
-  EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType
+  EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType,MessageFlags
 } = require('discord.js');
 const Team = require('../../schemas/teamSchema'); 
 const LogBuilder = require("../../utils/logBuilder");
@@ -185,7 +185,7 @@ module.exports = {
         if (i.customId === 'confirm_delete') {
           await i.deferUpdate();
 
-          await i.editReply({ content: `🗑️ **${teamName}** ekibi siliniyor...`, embeds: [], components: [] }).catch(() => null);
+          await i.editReply({ content: `🗑️ **${teamData.teamName}** ekibi siliniyor...`, embeds: [], components: [] }).catch(() => null);
 
           const category = guild.channels.cache.get(teamData.teamCategoryID);
     
