@@ -51,6 +51,40 @@ module.exports = {
     const subcommand = interaction.options.getSubcommand();
     const guild = interaction.guild;
 
+    // --- AYRIL KOMUTU ---
+    if (subcommand === 'ayrıl') {
+      await interaction.deferReply({ ephemeral: true });
+
+      const teamData = await Team.findOne({ guildID: guild.id, teamMembers: interaction.user.id });
+
+      if (!teamData) {
+        return interaction.editReply("❌ Herhangi bir ekibin üyesi değilsiniz.");
+      }
+
+      if (teamData.teamOwnerID === interaction.user.id) {
+        return interaction.editReply("❌ Ekip sahibi olduğunuz için bu komutla ayrılamazsınız. Ekibi silmek için `/ekip sil` komutunu kullanın.");
+      }
+
+      const role = guild.roles.cache.get(teamData.teamRoleID);
+      const member = interaction.member;
+
+      if (role && member.roles.cache.has(role.id)) {
+        await member.roles.remove(role).catch(() => null);
+      }
+
+      teamData.teamMembers = teamData.teamMembers.filter(id => id !== interaction.user.id);
+      await teamData.save();
+
+      return interaction.editReply(`✅ **${teamData.teamName}** ekibinden başarıyla ayrıldınız.`);
+    }
+
+      if (!interaction.member.roles.cache.has('1466607918429372447')) {
+    return interaction.reply({ 
+        content: "❌ Bu komutu kullanmak için gerekli role sahip değilsin!", 
+        ephemeral: true 
+    });
+}
+
     // --- EKLE KOMUTU ---
     if (subcommand === 'ekle') {
       await interaction.deferReply({ ephemeral: true });
@@ -88,33 +122,6 @@ module.exports = {
       await teamData.save();
 
       return interaction.editReply(`✅ ${targetUser} ekibinizden çıkartıldı.`);
-    }
-
-    // --- AYRIL KOMUTU ---
-    if (subcommand === 'ayrıl') {
-      await interaction.deferReply({ ephemeral: true });
-
-      const teamData = await Team.findOne({ guildID: guild.id, teamMembers: interaction.user.id });
-
-      if (!teamData) {
-        return interaction.editReply("❌ Herhangi bir ekibin üyesi değilsiniz.");
-      }
-
-      if (teamData.teamOwnerID === interaction.user.id) {
-        return interaction.editReply("❌ Ekip sahibi olduğunuz için bu komutla ayrılamazsınız. Ekibi silmek için `/ekip sil` komutunu kullanın.");
-      }
-
-      const role = guild.roles.cache.get(teamData.teamRoleID);
-      const member = interaction.member;
-
-      if (role && member.roles.cache.has(role.id)) {
-        await member.roles.remove(role).catch(() => null);
-      }
-
-      teamData.teamMembers = teamData.teamMembers.filter(id => id !== interaction.user.id);
-      await teamData.save();
-
-      return interaction.editReply(`✅ **${teamData.teamName}** ekibinden başarıyla ayrıldınız.`);
     }
 
     // --- ADLANDIR KOMUTU ---

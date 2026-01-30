@@ -9,6 +9,13 @@ module.exports = async (client, interaction) => {
     if (!interaction.isButton()) return;
     if (interaction.customId !== 'teamRegisterButton') return;
 
+    if (!interaction.member.roles.cache.has('1466607918429372447')) {
+        return interaction.reply({
+            content: "❌ Bu komutu kullanmak için gerekli role sahip değilsin!",
+            ephemeral: true
+        });
+    }
+
     const existingTeam = await Team.findOne({ 
         guildID: interaction.guild.id, 
         $or: [
