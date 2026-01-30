@@ -109,10 +109,10 @@ module.exports = {
       if (!role) return interaction.editReply("❌ Ekip rolü sunucuda bulunamadı.");
 
       await targetUser.roles.add(role).catch(() => null);
-      await targetUser.role.add("1466607918429372447");
       teamData.teamMembers.push(targetUser.id);
       await teamData.save();
 
+      await targetUser.roles.add("1466607918429372447").catch(() => null);
       return interaction.editReply(`✅ ${targetUser} başarıyla ekibinize eklendi.`);
     }
 
