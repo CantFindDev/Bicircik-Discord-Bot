@@ -8,29 +8,40 @@ module.exports = async (client, interaction) => {
 
       const selectedRoleIds = interaction.values;
       const member = interaction.member;
+      
       if (!member) return;
 
       const data = await rolAlSchema.findOne({ guildID: interaction.guild.id });
-
       if (!data) {
         return interaction.editReply({ content: 'Rol alma sistemi ayarlı değil.' });
       }
-
-      const systemRoleIds = data.roles.map(r => r.roleId);
-
-      for (const roleId of systemRoleIds) {
-        if (member.roles.cache.has(roleId) && !selectedRoleIds.includes(roleId)) {
-          await member.roles.remove(roleId).catch(() => {});
-        }
-      }
+      
+      const addedRoles = [];
+      const removedRoles = [];
 
       for (const roleId of selectedRoleIds) {
-        if (!member.roles.cache.has(roleId)) {
-          await member.roles.add(roleId).catch(() => {});
+        const role = interaction.guild.roles.cache.get(roleId);
+        if (!role) continue;
+
+        if (member.roles.cache.has(roleId)) {
+          await member.roles.remove(roleId).catch(err => console.error(err));
+          removedRoles.push(role.name);
+        } else {
+          await member.roles.add(roleId).catch(err => console.error(err));
+          addedRoles.push(role.name);
         }
       }
 
-      await interaction.editReply({ content: 'Roller başarıyla güncellendi.' });
+      let infoMsg = "İşlem tamamlandı.";
+      if (addedRoles.length > 0 || removedRoles.length > 0) {
+        infoMsg = "";
+        if (addedRoles.length > 0) infoMsg += `✅ **Verilenler:** ${addedRoles.join(', ')}\n`;
+        if (removedRoles.length > 0) infoMsg += `🗑️ **Alınanlar:** ${removedRoles.join(', ')}`;
+      } else {
+          infoMsg = "Herhangi bir değişiklik yapılmadı.";
+      }
+
+      await interaction.editReply({ content: infoMsg });
 
     } catch (error) {
       console.error("Rol güncelleme hatası:", error);
