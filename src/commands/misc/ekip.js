@@ -85,7 +85,7 @@ module.exports = {
     });
 }
 
-    // --- EKLE KOMUTU ---
+// --- EKLE KOMUTU ---
     if (subcommand === 'ekle') {
       await interaction.deferReply({ ephemeral: true });
       const targetUser = interaction.options.getMember('kullanıcı');
@@ -93,10 +93,20 @@ module.exports = {
       const teamData = await Team.findOne({ guildID: guild.id, teamOwnerID: interaction.user.id });
       if (!teamData) return interaction.editReply("❌ Size ait bir ekip bulunamadı.");
 
-      const role = guild.roles.cache.get(teamData.teamRoleID);
-      if (!role) return interaction.editReply("❌ Ekip rolü sunucuda bulunamadı. Lütfen yöneticiye bildirin.");
+      const isTargetInAnyTeam = await Team.findOne({
+        guildID: guild.id,
+        $or: [
+          { teamOwnerID: targetUser.id },
+          { teamMembers: targetUser.id }
+        ]
+      });
 
-      if (teamData.teamMembers.includes(targetUser.id)) return interaction.editReply("❌ Bu kullanıcı zaten ekibinizde.");
+      if (isTargetInAnyTeam) {
+        return interaction.editReply(`❌ ${targetUser} zaten bir ekibe dahil (sahibi veya üyesi).`);
+      }
+
+      const role = guild.roles.cache.get(teamData.teamRoleID);
+      if (!role) return interaction.editReply("❌ Ekip rolü sunucuda bulunamadı.");
 
       await targetUser.roles.add(role).catch(() => null);
       teamData.teamMembers.push(targetUser.id);
