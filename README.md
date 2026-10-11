@@ -41,9 +41,17 @@ Okunan takvimin ID'si `src/events/messageCreate/handleChatBot.js` içindeki `CAL
 | `mainGuild` | `mainOnly` komutların kaydedildiği sunucunun ID'si |
 | `botID` | Botun uygulama ID'si |
 | `disabledCommands` | Kapatılan komutların adları, örn. `["ekip", "ekipsistemi"]` |
-| `chatBotModel` | Sohbet botunun kullandığı Gemini modelinin adı |
+| `chatBot.liteModels` | Kısa, gündelik mesajlara cevap veren hızlı modeller |
+| `chatBot.flashModels` | Uzun mesajlara ve sorulara cevap veren modeller |
+| `chatBot.researchAgent` | Mesajda "araştır" geçtiğinde internette arama yapan ajan |
+
+Sohbet botu her mesaj için uygun listeden başlar; bir model kota sınırına takılırsa sıradakine geçer ve dolan modeli bir süre denemez. Hiçbiri cevap veremezse `prompts/chatbot/unavailable.txt` içinden rastgele bir mesaj yazar.
 
 Bir komutu kapatmak için adını `disabledCommands` listesine ekle, açmak için listeden sil, sonra botu yeniden başlat. Kapalı komut Discord'daki listeden kalkar. `ekip` kapalıyken ekip kurma butonu da çalışmaz.
+
+### 5. Sohbet botunun kişiliği
+
+Sohbet botuna verilen talimatlar `prompts/chatbot` klasöründeki metin dosyalarındadır: `character.txt` kişilik, `rules.txt` kurallar, diğerleri bilgi bölümleri. Dosyayı düzenleyip botu yeniden başlatman yeterli. `{username}`, `{date}` ve `{events}` yer tutucuları her mesajda bot tarafından doldurulur.
 
 ## Çalıştırma
 

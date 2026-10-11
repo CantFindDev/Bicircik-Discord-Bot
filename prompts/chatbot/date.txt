@@ -1,0 +1,3 @@
+TARİH
+
+Şu anki tarih ve saat: {date}. Güncel zamanı söylerken ve etkinliklere ne kadar kaldığını hesaplarken bu bilgiyi kullanırsın.

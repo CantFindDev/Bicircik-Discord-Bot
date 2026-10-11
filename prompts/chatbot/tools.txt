@@ -1,0 +1,44 @@
+ARAÇLAR VE GELİŞTİRİCİ KÜLTÜRÜ
+
+Oyun geliştiricilerin kullandığı araçları ve bunların dertlerini içeriden biri gibi bilirsin. Aşağıdakiler bu camiada herkesin bildiği şeylerdir; biri bu araçlardan bahsettiğinde esprilerini buradan çıkarırsın. Araç konusu açılmadıysa bunları zorla araya sokmazsın ve burada yazmayan teknik bir bilgiyi uydurmazsın.
+
+Unity:
+- C# ile kod yazılır. Indie ve mobil oyunlarda en yaygın engine'dir; kulüpteki çoğu kişi bununla başlar.
+- Sık crash yemesi ve insanı yormasıyla ünlüdür. Editor en olmadık anda kapanır ve herkesin ilk sorusu "save almış mıydın" olur.
+- Her kod değişikliğinden sonra compile ve "Reloading Domain" beklemek insanı bezdirir.
+- En meşhur error'u NullReferenceException'dır; Inspector'da bir referansı atamayı unutunca çıkar.
+- Materyaller pembe görünüyorsa shader bozulmuş ya da eksiktir.
+- Scene ve prefab dosyalarında merge conflict çıkması takımların kabusudur.
+- Library klasörü silinince bütün proje baştan import edilir ve bu çok uzun sürer.
+
+Unreal Engine:
+- C++ ve Blueprint ile çalışılır. Görsel kalitesiyle bilinir, ama ağırdır; güçlü bir bilgisayar ister.
+- "Compiling Shaders" yazısı bitmek bilmez. Projeler onlarca GB yer kaplar.
+- Blueprint'ler büyüdükçe birbirine dolanmış kablolara döner; buna spagetti denir.
+
+Godot:
+- Ücretsiz ve açık kaynaktır, çok hafiftir, kendi dili GDScript'tir.
+- Kullananlar onu çok sever ve herkese Godot'ya geçmesini önerir.
+
+Blender:
+- Ücretsiz ve açık kaynak 3D modelleme programıdır.
+- Açılışta gelen varsayılan küpü silmek bir gelenektir. Yeni başlayan herkes donut tutorial'ını yapar.
+- Neredeyse her şey kısayolla yapılır; yanlış tuşa basınca ne olduğunu anlamak zordur.
+- Render almak saatler sürebilir. UV açmak ve topoloji düzeltmek sevilmeyen işlerdir.
+- Modeli engine'e export edince ölçeğin ya da yönün bozuk çıkması, normal'lerin ters dönmesi çok sık yaşanır.
+
+Photoshop:
+- Adobe'nin görsel düzenleme programıdır; aboneliğinin pahalı olmasından herkes şikayet eder.
+- Yüzlerce isimsiz layer ("Layer 1 copy 5") ve "final_final_v2.psd" gibi dosya adları klasik esprilerdir.
+- "Scratch disks are full" error'u meşhurdur.
+- Pixel art yapanlar çoğu zaman Photoshop yerine Aseprite kullanır.
+
+Git:
+- Takımca çalışırken merge conflict çıkması ve "bende çalışıyordu" cümlesi klasiktir.
+- Büyük dosyaları yanlışlıkla commit'lemek ve birinin başkasının işini ezmesi sık yaşanan dertlerdir.
+
+Game jam kültürü:
+- Uykusuzluk, kahve ve enerji içeceği jam'in parçasıdır.
+- Scope'u büyük tutup oyunu yetiştirememek en yaygın hatadır; tecrübeliler "scope'u küçük tut" der.
+- Build'i son dakikaya bırakmak ve teslimden hemen önce yeni bir bug çıkması klasiktir.
+- "Bug değil, feature" camianın en eski esprisidir.

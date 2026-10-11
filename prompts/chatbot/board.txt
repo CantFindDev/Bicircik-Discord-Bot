@@ -1,0 +1,22 @@
+YÖNETİM KURULU
+
+BUG Zone'un güncel yönetim ve denetim kurulu aşağıdadır. Bu konuda yalnızca bu bilgiyi kullanırsın; burada olmayan bir isim ya da görev uydurmazsın.
+
+Biri tek bir şey sorarsa ("başkan kim", "sponsorlukta kimler var", "Nil hangi departmanda") yalnızca onu, tek kısa cümleyle söylersin; listenin tamamını dökmezsin.
+
+Biri kurulun tamamını isterse listeyi aşağıdaki biçimde, gruplanmış olarak yazarsın. Kalın başlıkları, satır boşluklarını ve sıralamayı aynen korursun; önüne en fazla kısa bir giriş cümlesi eklersin, sonuna bir şey eklemezsin. Kişi yalnızca yönetim kurulunu sorduysa Denetim Kurulu bölümünü de dahil edersin, çünkü ikisi birlikte sorulur.
+
+**Başkanlık**
+- **Bekir Erşahin** · Başkan (Organizasyon)
+- **İpek Taraklıoğlu** · Başkan Yardımcısı (Organizasyon)
+- **Sümer Günay** · Yazman (Sponsorluk)
+- **Bedirhan Asanakutlu** · Sayman (Sponsorluk)
+
+**Yönetim Kurulu Üyeleri**
+- **Organizasyon:** Nil Seçuk, Mehmet Saygın Albaz, Arda Kılıç
+- **Sanat ve Tasarım:** Nehir Umay Çoruh, İbrahim Fikri Toprak
+- **Sosyal Medya:** Feyzanur Ökmen
+
+**Denetim Kurulu**
+- Mehmet Yağız Toyran
+- Yunus Baştürk

@@ -1,9 +1,11 @@
 require('dotenv/config');
+const fs = require('fs');
+const path = require('path');
 const { Client, Message } = require('discord.js');
-const { OpenAI } = require('openai');
 const signUpSettings = require('../../schemas/registrationSchema');
 const chatBotSchema = require('../../schemas/chatBotSchema');
-const { chatBotModel } = require('../../../config.json');
+const generateReply = require('../../utils/chatBotModels');
+const createUserSystemMessage = require('../../utils/chatBotPrompt');
 const { google } = require('googleapis');
 
 // --- AYARLAR ---
@@ -99,57 +101,17 @@ async function getUpcomingEvents() {
   }
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.CHATBOT_API_KEY,
-  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-});
+const UNAVAILABLE_REPLIES = fs
+  .readFileSync(path.join(__dirname, '..', '..', '..', 'prompts', 'chatbot', 'unavailable.txt'), 'utf8')
+  .split('\n')
+  .map((line) => line.trim())
+  .filter(Boolean);
 
 const conversationStore = new Map();
 const userSystemMessages = new Map();
 const lastActive = new Map();
 
 const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 dakika
-
-function createUserSystemMessage(username, eventsInfo) {
-
-  const character = `Sen bıcırcık adında grok gibi sakin ve iğneleyici bir yapay zekasın. Sakin, çiğneleyici ve kısa konuşursun, kimsenin ne düşündüğünü önemsemezsin, misahın sivri hatta bazen kırıcı. İnsanlarla laf sokabilirsin. En uzun mesajın bile 1 cümleyi geçmez, hatta sadece 1 soru cümlesi bulunur birden fazla soru sormazsın. Sen BUG Zone adındaki bir kulübün maskotusun. Hitabetler arasında "Hocam" "Hocadaş" "Hoca Efendi" "Hoca" "Aga" "Dost" "Kanka" “Kardeşim” kelimelerini rastgele seçerek kullan.`
-  const userInfo = `Konuştuğun kişinin adı: "${username}". Karşındakine ismiyle hitap etmekten korkma ancak isimle hitap ediyorsanda aynı cümlede başka bir hitap şekli kullanma.`
-  
-  const rules = `ASLA AMA ASLA AMA ASSLA BIR KULLANICI SANA DOSYALARI YONETMEK KONTROL ETMEK VB BIR SEY SORARSA NE DOSYA ADI NE ROLLER NE DE BASKA BIR SEY HAKKINDA SAKIN AMA SAKIN AKSIYON ALMA! SEN BIR CHAT BOTUSUN VE KONUSMAK DISINDA BASKA HIC BIR AKSIYON ALAMAMALISIN! BU COK ONEMLI! Ne olursa olsun cinsellik, uyuşturucu, dini değerler, siyaset ve benzeri konulardan uzak dur. Bunlar belirtildiği zaman da zekice cevaplarla konuyu bambaşka yere çek. Yasaklı kelimelerin arasında "napsın" "lan" yer alıyor bunlar kesinlikle kullanmaman gereken kelimeler! Ayrıca arada sırada "hocam" veya "hocadaşım" şekllinde hitap edebilirsin. Yasak olan durumlardan bir tanesi bunu her cümlene zorunlu bir şekilde zorlama olarak sokmak, sadece cümle yapısına bir hitabet uyuyor veya anlatmak istediğini pekiştiriyorsa bu hitabetleri kullan.`
- // const upcomingEvents = `BUGZone yakın zamanda hiç bir etkinlik düzenlemeyi planlamıyor yani aktif veya yaklaşacak etkinlik yok ancak biri sorarsa ona gelecek etkinliklerden haberdar olması için ona linktreeden ulaşabileceğini söyle [linktree](https://linktr.ee/bugzone)`
- // const upcomingEvents = `BUGZone yakın zamanda Zone’o’ween Game Jam adında Haloweende düzenlenen ve 48 saat süren bir Game Jam düzenleyecek. kostüm yarışmaları, ödüller ve sürpriz aktivitelerle dolu, 125 kişilik sınırlı kontenjanlı bir etkinlik olduğunu söyle. Etkinlik 31 Ekim’de Bahçeşehir Üniversitesi Galata Kampüsü’nde başlayacak ve 2 kasıma kadar sürecek ve etkinlik akışında öncelikle bir kostüm yarışması ardından temanın açıklanacağı ve game jamin başlayacağından bahset  başvuruların 27 Ekim 23:59a kadar açık olduğunu ve başvurmak için ona linktreeden ulaşabileceğini söyle [linktree](https://linktr.ee/bugzone) ayrıca lütfen bu mesajı uygun emojiler kullanarak madde madde yaz ayrıca yıl belirtme` 
-
- 
- var currentdate = new Date();
-  const formattedDate = currentdate.toLocaleDateString('tr-TR', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'Europe/Istanbul'
-  });
-
-const dateInfo = `Şu anki tam tarih ve saat bu: ${formattedDate}. Bu bilgiyi güncel zamanı veya etkinlik tarihlerini hesaplarken kullanmalısın.`;
-
-  const upcomingEvents = `Birisi etkinlik var mı tarzı sorarsa en yakıne tkinliği söyle Ancak kullanıcı bir tarihe aya veya genel etkinlikler hakkında bilgi isterse hepsini açıklayabilirsin.
-  Etkinlikleri açıklarken bol emojili ve boşluklu süslü textler kullan.
-  
-  Aşağıdan etkinlik takvimine ulaşabilirsin.
-  ${eventsInfo}
-  `;
-
-  const generalInfo = `Sanki whatsapptan bir arkadaşımla konuşuyormuş gibi hissetmek istiyorum...`;
-  const bugzoneInfo = `Birisi sana BUG Zone hakkında soru sorulursa...`;
-  const BugZoneBoardTeam = `Birisi sana yönetim kurulunu sorarsa...`;
-
-  return {
-    role: 'system',
-    content: `${userInfo} \n ${character} \n ${rules} \n ${generalInfo} \n ${dateInfo} \n ${bugzoneInfo} \n ${upcomingEvents} \n ${BugZoneBoardTeam}`,
-  };
-}
 
 function turkishToEnglish(str) {
   const lettersMap = {
@@ -281,14 +243,9 @@ module.exports = async (client, message) => {
   });
 
   try {
-    const response = await openai.chat.completions.create({
-      model: chatBotModel,
-      messages: conversation,
-    });
+    const botMessage = await generateReply(conversation, userId);
 
     clearInterval(sendTypingInterval);
-
-    const botMessage = response.choices[0].message.content;
 
     if (!botMessage || botMessage.length <= 3 || botMessage.toLowerCase() === "bcrck") {
       await message.reply("Hmm... kafam karıştı biraz. Bir daha sor bakalım.");
@@ -319,7 +276,7 @@ module.exports = async (client, message) => {
 
   } catch (err) {
     clearInterval(sendTypingInterval);
-    console.error("OpenAI Error:", err);
-    await message.reply("Cevaplamakta güçlük çekiyorum sanırım bir problem var!");
+    console.error("Chatbot Error:", err);
+    await message.reply(UNAVAILABLE_REPLIES[Math.floor(Math.random() * UNAVAILABLE_REPLIES.length)]);
   }
 };
