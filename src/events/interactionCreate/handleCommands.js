@@ -1,7 +1,8 @@
 const getLocalCommands = require('../../utils/getLocalCommands');
-const { developers, testGuild } = require('../../../config.json');
+const { testGuild } = require('../../../config.json');
 const { Client, Interaction } = require('discord.js');
 const LogBuilder = require("../../utils/logBuilder");
+const isDeveloper = require('../../utils/isDeveloper');
 
 module.exports = async (client, interaction) => {
     if (!interaction.isChatInputCommand()) return;
@@ -20,14 +21,12 @@ module.exports = async (client, interaction) => {
             return;
         }
 
-        if (commandObject.devOnly) {
-            if (!developers.includes(interaction.member.id)) {
-                interaction.reply({
-                    content: "Bu komutu sadece geliştiriciler kullanabilir!",
-                    ephemeral: true,
-                });
-                return;
-            }
+        if (commandObject.devOnly && !isDeveloper(interaction.user.id)) {
+            interaction.reply({
+                content: "Bu komutu sadece geliştiriciler kullanabilir!",
+                ephemeral: true,
+            });
+            return;
         }
 
         if (commandObject.testOnly) {

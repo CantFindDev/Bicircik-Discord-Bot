@@ -43,7 +43,14 @@ module.exports = (existingCommand, localCommand) => {
     return false;
   };
 
+  const localPermissions = (localCommand.memberPermissions ?? []).reduce(
+    (acc, perm) => acc | BigInt(perm),
+    0n
+  );
+  const existingPermissions = existingCommand.defaultMemberPermissions?.bitfield ?? 0n;
+
   if (
+    existingPermissions !== localPermissions ||
     existingCommand.description !== localCommand.description ||
     existingCommand.options?.length !== (localCommand.options?.length || 0) ||
     areOptionsDifferent(existingCommand.options, localCommand.options || [])
