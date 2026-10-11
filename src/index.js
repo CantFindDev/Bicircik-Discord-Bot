@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./utils/useImageFallback")();
 const { Client, IntentsBitField, Partials } = require("discord.js");
 const mongoose = require('mongoose');
 const eventHandler = require("./handlers/eventHandler");
