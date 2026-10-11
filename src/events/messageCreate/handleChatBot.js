@@ -2,6 +2,7 @@ require('dotenv/config');
 const { Client, Message } = require('discord.js');
 const { OpenAI } = require('openai');
 const signUpSettings = require('../../schemas/registrationSchema');
+const chatBotSchema = require('../../schemas/chatBotSchema');
 const { google } = require('googleapis');
 
 // --- AYARLAR ---
@@ -173,11 +174,14 @@ function turkishToEnglish(str) {
  */
 module.exports = async (client, message) => {
   if (message.inGuild()) {
+    const content = message.content.toLowerCase();
+    if (!message.mentions.has(client.user.id) && !content.includes("bicircik") && !content.includes("bıcırcık")) return;
+
     const settings = await signUpSettings.findOne({ guildID: message.guild.id });
     if (settings && message.channel.id === settings.kayıtChannel) return;
 
-    const content = message.content.toLowerCase();
-    if (!message.mentions.has(client.user.id) && !content.includes("bicircik") && !content.includes("bıcırcık")) return;
+    const chatBotSettings = await chatBotSchema.findOne({ guildID: message.guild.id });
+    if (chatBotSettings && message.channel.id !== chatBotSettings.channelID) return;
   }
 
   if (message.author.bot) return;
