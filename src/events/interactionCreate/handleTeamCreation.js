@@ -4,10 +4,18 @@ const {
 } = require("discord.js");
 const Team = require('../../schemas/teamSchema'); // Yeni şema dosyanın yolu
 const LogBuilder = require("../../utils/logBuilder");
+const isCommandDisabled = require("../../utils/isCommandDisabled");
 
 module.exports = async (client, interaction) => {
     if (!interaction.isButton()) return;
     if (interaction.customId !== 'teamRegisterButton') return;
+
+    if (isCommandDisabled('ekip')) {
+        return interaction.reply({
+            content: "Ekip sistemi şu anda kapalı.",
+            ephemeral: true
+        });
+    }
 
     // if (!interaction.member.roles.cache.has('1466607918429372447')) {
     //     return interaction.reply({

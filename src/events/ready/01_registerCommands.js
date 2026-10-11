@@ -2,6 +2,7 @@ const { testGuild, mainGuild } = require('../../../config.json');
 const getApplicationCommands = require('../../utils/getApplicationCommands');
 const getLocalCommands = require('../../utils/getLocalCommands');
 const checkCommandDiffirience = require('../../utils/checkCommandDiffirience');
+const isCommandDisabled = require('../../utils/isCommandDisabled');
 
 module.exports = async (client) => {
 
@@ -44,7 +45,7 @@ module.exports = async (client) => {
         ? memberPermissions.reduce((acc, perm) => acc | BigInt(perm), 0n).toString()
         : null;
 
-      if (deleted) {
+      if (deleted || isCommandDisabled(name)) {
         // Delete from all scopes if exists
         if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
         if (existingTestMap.has(name)) await safeDelete(testCommands, existingTestMap.get(name).id, name, "Test");

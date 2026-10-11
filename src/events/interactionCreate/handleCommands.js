@@ -3,6 +3,7 @@ const { testGuild } = require('../../../config.json');
 const { Client, Interaction } = require('discord.js');
 const LogBuilder = require("../../utils/logBuilder");
 const isDeveloper = require('../../utils/isDeveloper');
+const isCommandDisabled = require('../../utils/isCommandDisabled');
 
 module.exports = async (client, interaction) => {
     if (!interaction.isChatInputCommand()) return;
@@ -12,6 +13,14 @@ module.exports = async (client, interaction) => {
     try {
         const commandObject = localCommands.find((cmd) => cmd.name === interaction.commandName);
         if (!commandObject) return;
+
+        if (isCommandDisabled(commandObject.name)) {
+            interaction.reply({
+                content: "Bu komut şu anda kapalı.",
+                ephemeral: true,
+            });
+            return;
+        }
 
         if (!interaction.inGuild()) {
             interaction.reply({

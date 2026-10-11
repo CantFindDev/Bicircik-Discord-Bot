@@ -17,7 +17,7 @@ BUG Zone Discord botu.
 | `BOT_TOKEN` | [Discord Developer Portal](https://discord.com/developers/applications) > uygulaman > Bot > Reset Token |
 | `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com/api-keys) > API keys |
 | `DB_CONNECTION_URI` | [MongoDB Atlas](https://cloud.mongodb.com) > cluster > Connect > Drivers |
-| `DEVELOPER` | Kendi Discord kullanıcı ID'n. Birden fazlaysa virgülle ayır. Boş bırakılabilir. |
+| `DEVELOPER` | `devOnly` komutları ve developer modunu kullanabilen Discord kullanıcı ID'si. Birden fazlaysa virgülle ayır. |
 
 Developer Portal'da Bot sayfasındaki üç Privileged Gateway Intent de açık olmalı: Presence, Server Members, Message Content.
 
@@ -40,7 +40,9 @@ Okunan takvimin ID'si `src/events/messageCreate/handleChatBot.js` içindeki `CAL
 | `testGuild` | `testOnly` komutların kaydedildiği sunucunun ID'si |
 | `mainGuild` | `mainOnly` komutların kaydedildiği sunucunun ID'si |
 | `botID` | Botun uygulama ID'si |
-| `developers` | `devOnly` komutları kullanabilen kullanıcı ID'leri |
+| `disabledCommands` | Kapatılan komutların adları, örn. `["ekip", "ekipsistemi"]` |
+
+Bir komutu kapatmak için adını `disabledCommands` listesine ekle, açmak için listeden sil, sonra botu yeniden başlat. Kapalı komut Discord'daki listeden kalkar. `ekip` kapalıyken ekip kurma butonu da çalışmaz.
 
 ## Çalıştırma
 
