@@ -15,7 +15,7 @@ BUG Zone Discord botu.
 | Anahtar | Nereden alınır |
 |---|---|
 | `BOT_TOKEN` | [Discord Developer Portal](https://discord.com/developers/applications) > uygulaman > Bot > Reset Token |
-| `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com/api-keys) > API keys |
+| `CHATBOT_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) > Create API key |
 | `DB_CONNECTION_URI` | [MongoDB Atlas](https://cloud.mongodb.com) > cluster > Connect > Drivers |
 | `DEVELOPER` | `devOnly` komutları ve developer modunu kullanabilen Discord kullanıcı ID'si. Birden fazlaysa virgülle ayır. |
 
@@ -41,6 +41,7 @@ Okunan takvimin ID'si `src/events/messageCreate/handleChatBot.js` içindeki `CAL
 | `mainGuild` | `mainOnly` komutların kaydedildiği sunucunun ID'si |
 | `botID` | Botun uygulama ID'si |
 | `disabledCommands` | Kapatılan komutların adları, örn. `["ekip", "ekipsistemi"]` |
+| `chatBotModel` | Sohbet botunun kullandığı Gemini modelinin adı |
 
 Bir komutu kapatmak için adını `disabledCommands` listesine ekle, açmak için listeden sil, sonra botu yeniden başlat. Kapalı komut Discord'daki listeden kalkar. `ekip` kapalıyken ekip kurma butonu da çalışmaz.
 

@@ -2,5 +2,6 @@
     "testGuild": "680812636019097604",
     "mainGuild": "1062091697057693847",
     "botID": "1402990968994795591",
-    "disabledCommands": ["ekip", "ekipsistemi"]
+    "disabledCommands": ["ekip", "ekipsistemi"],
+    "chatBotModel": "gemini-flash-latest"
 }

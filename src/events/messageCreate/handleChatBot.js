@@ -3,6 +3,7 @@ const { Client, Message } = require('discord.js');
 const { OpenAI } = require('openai');
 const signUpSettings = require('../../schemas/registrationSchema');
 const chatBotSchema = require('../../schemas/chatBotSchema');
+const { chatBotModel } = require('../../../config.json');
 const { google } = require('googleapis');
 
 // --- AYARLAR ---
@@ -99,7 +100,8 @@ async function getUpcomingEvents() {
 }
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.CHATBOT_API_KEY,
+  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
 });
 
 const conversationStore = new Map();
@@ -275,13 +277,12 @@ module.exports = async (client, message) => {
   // Kullanıcı mesajını ekle
   conversation.push({
     role: 'user',
-    name: safeName,
     content: userMessage.replace(mentionRegex, "").trim(),
   });
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Model ismini doğru yazdığından emin ol
+      model: chatBotModel,
       messages: conversation,
     });
 
