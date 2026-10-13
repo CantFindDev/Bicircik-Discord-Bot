@@ -2,12 +2,15 @@ const { Client, Interaction, AttachmentBuilder } = require('discord.js');
 const { Font } = require("canvacord");
 const { GreetingsCard } = require("../../utils/canvacord/greetingsCard.js");
 const welcomerSchema = require('../../schemas/welcomerSchema.js');
+const isRecentDuplicate = require('../../utils/isRecentDuplicate.js');
 
 /**
  * @param {Client} client
  * @param {Interaction} interaction
  */
 module.exports = async (client, interaction) => {
+    if (isRecentDuplicate(`goodbye:${interaction.guild.id}:${interaction.id}`)) return;
+
     const data = await welcomerSchema.findOne({ guildID: interaction.guild.id });
     if (!data?.goodbyeChannel) return;
 

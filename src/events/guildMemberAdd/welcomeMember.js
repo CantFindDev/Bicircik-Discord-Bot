@@ -2,12 +2,15 @@ const { Client, AttachmentBuilder } = require('discord.js');
 const { Font } = require("canvacord");
 const { GreetingsCard } = require("../../utils/canvacord/greetingsCard.js");
 const welcomerSchema = require('../../schemas/welcomerSchema.js');
+const isRecentDuplicate = require('../../utils/isRecentDuplicate.js');
 
 /**
  * @param {Client} client
  * @param {import('discord.js').GuildMember} member
  */
 module.exports = async (client, member) => {
+    if (isRecentDuplicate(`welcome:${member.guild.id}:${member.id}`)) return;
+
     try {
         const data = await welcomerSchema.findOne({ guildID: member.guild.id });
         if (!data?.welcomeChannel) return;
@@ -31,8 +34,8 @@ module.exports = async (client, member) => {
         const attachment = new AttachmentBuilder(image);
 
         await welcomeChannel.send({ files: [attachment] });
-        console.log(`${user.tag} için hoş geldin kartı gönderildi.`);
+        console.log(`Welcome card sent for ${user.tag}.`);
     } catch (error) {
-        console.error("Hoş geldin kartı gönderilirken hata oluştu:", error);
+        console.error("Failed to send the welcome card:", error);
     }
 };
