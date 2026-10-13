@@ -1,8 +1,19 @@
 const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits } = require('discord.js');
+const { getTranslator } = require('../../utils/language');
+const {
+    reasonOption,
+    getReason,
+    buildAuditReason,
+    claimMemberRemoval,
+    getHierarchyError,
+    notifyTarget,
+    recordCase,
+} = require('../../utils/moderation');
 
 module.exports = {
     name: 'kick',
     description: "Sunucudan bir kullanıcıyı atar.",
+    language: 'auto',
 
     mainOnly: true,
 
@@ -16,20 +27,18 @@ module.exports = {
             required: true,
             type: ApplicationCommandOptionType.User,
         },
-         {
-             name: 'sebep',
-            description: 'Kullanıcının atılma sebebi',
-            type: ApplicationCommandOptionType.String,
-        }
-    ],    
+        reasonOption,
+    ],
 
     /**
+     * Kicks a member the command user and the bot both outrank, then records the case.
      * @param {Client} client
      * @param {Interaction} interaction
      */
     callback: async (client, interaction) => {
-        const targetUserID = interaction.options.get('hedef-kullanıcı').value;
-        const reason = interaction.options.get('sebep')?.value || 'Sebep belirtilmedi.';
+        const t = getTranslator(interaction);
+        const targetUserID = interaction.options.getUser('hedef-kullanıcı').id;
+        const reason = getReason(interaction);
 
         await interaction.deferReply({ ephemeral: true });
 
@@ -37,45 +46,34 @@ module.exports = {
         try {
             targetUser = await interaction.guild.members.fetch(targetUserID);
         } catch {
-            await interaction.editReply({ content: 'Kullanıcı bulunamadı.', ephemeral: true });
+            await interaction.editReply({ content: t('common.userNotFound') });
             return;
         }
 
-        if (targetUser.id === interaction.guild.ownerId) {
-            await interaction.editReply({ content: 'Sunucu sahibini atamazsın!', ephemeral: true });
+        const hierarchyError = getHierarchyError(interaction, targetUser);
+        if (hierarchyError) {
+            await interaction.editReply({ content: hierarchyError });
             return;
         }
 
-        if (targetUser.id === interaction.user.id) {
-            await interaction.editReply({ content: 'Kendini atman pek mantıklı değil.', ephemeral: true });
+        if (!targetUser.kickable) {
+            await interaction.editReply({ content: t('kick.cannot') });
             return;
         }
 
-        if (targetUser.id === client.user.id) {
-            await interaction.editReply({ content: 'Kendi kendimi atamam.', ephemeral: true });
-            return;
-        }
-
-        const targetUserRolePosition = targetUser.roles.highest.position;
-        const requesterRolePosition = interaction.member.roles.highest.position;
-        const botRolePosition = interaction.guild.members.me.roles.highest.position;
-
-        if (targetUserRolePosition >= requesterRolePosition) {
-            await interaction.editReply({ content: 'Senden daha üst veya aynı role sahip bir kullanıcıyı atamazsın.', ephemeral: true });
-            return;
-        }
-
-        if (targetUserRolePosition >= botRolePosition) {
-            await interaction.editReply({ content: 'Benden daha üst veya aynı role sahip bir kullanıcıyı atamam.', ephemeral: true });
+        if (!claimMemberRemoval(interaction)) {
+            await interaction.editReply({ content: t('mod.rateLimited') });
             return;
         }
 
         try {
-            await targetUser.kick(reason);
-            await interaction.editReply({ content: `${targetUser.user.tag} kullanıcısı sunucudan atıldı.\nSebep: ${reason}`, ephemeral: false });
+            await notifyTarget(targetUser.user, interaction.guild, 'kick', reason);
+            await targetUser.kick(buildAuditReason(interaction.user, reason));
+            await recordCase({ guild: interaction.guild, user: targetUser.user, moderator: interaction.user, type: 'kick', reason });
+            await interaction.editReply({ content: t('kick.done', { user: targetUser.user.tag, reason }) });
         } catch (error) {
-            console.error('Kullanıcıyı atarken bir hata oluştu:', error);
-            await interaction.editReply({ content: 'Kullanıcı atılırken bir hata oluştu.', ephemeral: true });
+            console.error('Failed to kick the user:', error);
+            await interaction.editReply({ content: t('kick.error') });
         }
     }
 }

@@ -1,8 +1,32 @@
-const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits } = require('discord.js');
+const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits, RESTJSONErrorCodes } = require('discord.js');
+const { getTranslator } = require('../../utils/language');
+const {
+    reasonOption,
+    getReason,
+    buildAuditReason,
+    claimMemberRemoval,
+    getHierarchyError,
+    notifyTarget,
+    recordCase,
+} = require('../../utils/moderation');
+
+/**
+ * Fetches the member, or returns null when the user is not in the guild.
+ * Any other failure is thrown, so a failed lookup can never be mistaken for "not a member" and skip the role checks.
+ */
+const fetchMemberOrNull = async (guild, userId) => {
+    try {
+        return await guild.members.fetch(userId);
+    } catch (error) {
+        if (error.code === RESTJSONErrorCodes.UnknownMember) return null;
+        throw error;
+    }
+};
 
 module.exports = {
     name: 'ban',
     description: "Sunucudan bir kullanıcıyı tamamen atar!",
+    language: 'auto',
 
     mainOnly: true,
 
@@ -16,62 +40,53 @@ module.exports = {
             required: true,
             type: ApplicationCommandOptionType.User,
         },
-         {
-             name: 'sebep',
-            description: 'Kullanıcının atılma sebebi',
-            type: ApplicationCommandOptionType.String,
-        }
+        reasonOption,
     ],
-    
+
+    /**
+     * Bans a user, then records the case. A member must be outranked by the command user and the bot.
+     * A user who is not in the guild (picked by pasting the ID) can be banned too.
+     * @param {Client} client
+     * @param {Interaction} interaction
+     */
     callback: async (client, interaction) => {
-        const targetUserID = interaction.options.getUser('hedef-kullanıcı').id;
-        const reason = interaction.options.getString('sebep') || 'Sebep belirtilmedi.';
+        const t = getTranslator(interaction);
+        const targetUser = interaction.options.getUser('hedef-kullanıcı');
+        const reason = getReason(interaction);
 
         await interaction.deferReply({ ephemeral: true });
 
-        let targetUser;
-        try {
-            targetUser = await interaction.guild.members.fetch(targetUserID);
-        } catch {
-            await interaction.editReply({ content: 'Kullanıcı bulunamadı.', ephemeral: true });
+        const targetMember = await fetchMemberOrNull(interaction.guild, targetUser.id);
+
+        if (targetMember) {
+            const hierarchyError = getHierarchyError(interaction, targetMember);
+            if (hierarchyError) {
+                await interaction.editReply({ content: hierarchyError });
+                return;
+            }
+
+            if (!targetMember.bannable) {
+                await interaction.editReply({ content: t('ban.cannot') });
+                return;
+            }
+        } else if (await interaction.guild.bans.fetch(targetUser.id).catch(() => null)) {
+            await interaction.editReply({ content: t('ban.already') });
             return;
         }
 
-        if (targetUser.id === interaction.guild.ownerId) {
-            await interaction.editReply({ content: 'Sunucu sahibini atamazsın!.', ephemeral: true });
-            return;
-        }
-
-        if (targetUser.id === interaction.user.id) {
-            await interaction.editReply({ content: 'Kendini atman pek mantıklı olmayabilir.', ephemeral: true });
-            return;
-        }
-
-        if (targetUser.id === client.user.id) {
-            await interaction.editReply({ content: 'Kendi kendimi atamam.', ephemeral: true });
-            return;
-        }
-
-        const targetUserRolePosition = targetUser.roles.highest.position;
-        const requesterRolePosition = interaction.member.roles.highest.position;
-        const botRolePosition = interaction.guild.members.me.roles.highest.position;
-
-        if (targetUserRolePosition >= requesterRolePosition) {
-            await interaction.editReply({ content: 'Senden daha üst veya aynı role sahip bir kullanıcıyı atamazsın.', ephemeral: true });
-            return;
-        }
-
-        if (targetUserRolePosition >= botRolePosition) {
-            await interaction.editReply({ content: 'Benden daha üst veya aynı role sahip bir kullanıcıyı atamam.', ephemeral: true });
+        if (!claimMemberRemoval(interaction)) {
+            await interaction.editReply({ content: t('mod.rateLimited') });
             return;
         }
 
         try {
-            await targetUser.ban({ reason });
-            await interaction.editReply({ content: `${targetUser} kullanıcısı sunucudan atıldı. Sebep: ${reason}`, ephemeral: false });
+            if (targetMember) await notifyTarget(targetUser, interaction.guild, 'ban', reason);
+            await interaction.guild.bans.create(targetUser.id, { reason: buildAuditReason(interaction.user, reason) });
+            await recordCase({ guild: interaction.guild, user: targetUser, moderator: interaction.user, type: 'ban', reason });
+            await interaction.editReply({ content: t('ban.done', { user: targetUser.tag, reason }) });
         } catch (error) {
-            console.error('Kullanıcıyı atarken bir hata oluştu:', error);
-            await interaction.editReply({ content: 'Kullanıcıyı atarken bir hata oluştu.', ephemeral: true });
+            console.error('Failed to ban the user:', error);
+            await interaction.editReply({ content: t('ban.error') });
         }
     }
 };
