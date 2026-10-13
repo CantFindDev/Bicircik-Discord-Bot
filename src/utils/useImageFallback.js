@@ -17,5 +17,5 @@ module.exports = () => {
     fallback.loaded = true;
     require.cache[imagePath] = fallback;
 
-    console.log('@napi-rs/image bu işlemcide çalışmıyor, resimler @napi-rs/canvas ile işlenecek.');
+    console.log('@napi-rs/image does not run on this CPU, images will be processed with @napi-rs/canvas.');
 };

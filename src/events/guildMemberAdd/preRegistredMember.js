@@ -30,10 +30,10 @@ module.exports = async (client, member) => {
             .setColor("Green")
             .send();
 
-        console.log(`${member.user.tag} otomatik olarak kayıt edildi ve log gönderildi.`);
+        console.log(`${member.user.tag} was registered automatically and the log was sent.`);
 
     } catch (err) {
-        console.error('Otomatik kayıt hatası:', err);
+        console.error('Automatic registration failed:', err);
         await new LogBuilder(member.guild)
             .setTitle("⚠️ Otomatik Kayıt Hatası")
             .setDescription(`**${member.user.tag}** kullanıcı otomatik kayıt edilirken hata oluştu.`)

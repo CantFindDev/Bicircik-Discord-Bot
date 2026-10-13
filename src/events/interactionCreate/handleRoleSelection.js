@@ -44,7 +44,7 @@ module.exports = async (client, interaction) => {
       await interaction.editReply({ content: infoMsg });
 
     } catch (error) {
-      console.error("Rol güncelleme hatası:", error);
+      console.error("Failed to update roles:", error);
       await interaction.editReply({ content: 'Bir hata oluştu.' }).catch(() => {});
     }
     

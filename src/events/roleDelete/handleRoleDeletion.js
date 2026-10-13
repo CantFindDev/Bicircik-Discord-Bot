@@ -13,6 +13,6 @@ module.exports = async (client, role) => {
             .send();
 
     } catch (err) {
-        console.error("Rol silme olayı loglanırken hata oluştu:", err);
+        console.error("Failed to log the role deletion:", err);
     }
 };

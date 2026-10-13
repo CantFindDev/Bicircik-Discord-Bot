@@ -18,6 +18,6 @@ module.exports = async (client, oldMessage, newMessage) => {
             .send();
 
     } catch (err) {
-        console.error("Mesaj düzenleme olayı loglanırken hata oluştu:", err);
+        console.error("Failed to log the message edit:", err);
     }
 };

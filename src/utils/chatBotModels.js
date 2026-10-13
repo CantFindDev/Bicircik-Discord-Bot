@@ -161,7 +161,7 @@ const researchOrAnswerWithout = async (model, conversation, userId) => {
     lastResearchAt.set(userId, Date.now());
     const reply = await askAgent(conversation, true);
     cooldowns.delete(chatBot.researchAgent);
-    console.log(`Sohbet cevabı: ${model} > ${chatBot.researchAgent}`);
+    console.log(`Chat reply: ${model} > ${chatBot.researchAgent}`);
     return reply;
   } catch (error) {
     rest(chatBot.researchAgent, error.status === MODEL_NOT_FOUND ? LONGEST_COOLDOWN : undefined);
@@ -205,7 +205,7 @@ module.exports = async (conversation, userId) => {
         continue;
       }
 
-      console.log(`Sohbet cevabı: ${model}`);
+      console.log(`Chat reply: ${model}`);
       return reply;
     } catch (error) {
       lastError = error;

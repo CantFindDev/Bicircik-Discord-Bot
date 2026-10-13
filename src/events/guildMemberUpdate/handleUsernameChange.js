@@ -16,6 +16,6 @@ module.exports = async (client, oldMember, newMember) => {
             .send();
 
     } catch (err) {
-        console.error("Takma ad değişikliği loglanırken hata oluştu:", err);
+        console.error("Failed to log the nickname change:", err);
     }
 };

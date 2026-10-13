@@ -102,7 +102,7 @@ module.exports = async (client, interaction) => {
                     `✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`
                 );
             } catch (err) {
-                console.warn(`Kullanıcıya DM gönderilemedi: ${modalInteraction.user.tag}`);
+                console.warn(`Could not send a DM to ${modalInteraction.user.tag}`);
                 await modalInteraction.followUp({
                     content: `✅ Başarıyla kayıt oldunuz!\nYeni isminiz: **${nameValue} ${surnameValue || ''}**\nRolünüz verildi!\nBUG Zone'yi Nereden Öğrendiniz?: ${reasonValue || "Belirtilmedi"}`,
                     ephemeral: true

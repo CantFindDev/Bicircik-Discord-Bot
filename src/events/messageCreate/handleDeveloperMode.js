@@ -108,6 +108,6 @@ module.exports = async (client, message) => {
         else if (isRoleListRequest) await sendAssignableRoles(message);
         else await replyStatus(message);
     } catch (error) {
-        console.error('Geliştirici modu işlenirken hata oluştu:', error);
+        console.error('Failed to handle developer mode:', error);
     }
 };

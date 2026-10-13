@@ -91,11 +91,11 @@ async function getUpcomingEvents() {
 
     // Zamanlayıcıyı güncelle
     lastFetchTime = now;
-    console.log("Takvim verisi Google'dan güncellendi.");
+    console.log("Calendar data refreshed from Google.");
     return cachedEventsString;
 
   } catch (error) {
-    console.error('Google Calendar Hatası:', error);
+    console.error('Google Calendar error:', error);
     // Hata olursa eldeki eski veriyi veya hata mesajını döndür
     return cachedEventsString || "Etkinlikleri çekerken bağlantısal bir sorun oldu. Sen en iyisi Linktree'ye bak.";
   }
@@ -232,7 +232,7 @@ module.exports = async (client, message) => {
         });
       }
     } catch (err) {
-      console.warn('Reply mesajı alınamadı:', err);
+      console.warn('Could not fetch the replied message:', err);
     }
   }
 

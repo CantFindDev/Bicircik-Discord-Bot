@@ -30,6 +30,6 @@ module.exports = async (client, oldRole, newRole) => {
       .send();
 
   } catch (err) {
-    console.error("Rol güncelleme loglanırken hata oluştu:", err);
+    console.error("Failed to log the role update:", err);
   }
 };

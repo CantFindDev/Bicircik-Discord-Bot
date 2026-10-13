@@ -16,6 +16,6 @@ module.exports = async (client, message) => {
             .send();
 
     } catch (err) {
-        console.error("Mesaj silme olayı loglanırken hata oluştu:", err);
+        console.error("Failed to log the message deletion:", err);
     }
 };
