@@ -29,7 +29,7 @@ module.exports = (existingCommand, localCommand) => {
       if (
         localOption.description !== existingOption.description ||
         localOption.type !== existingOption.type ||
-        (localOption.required || false) !== existingOption.required ||
+        (localOption.required || false) !== (existingOption.required || false) ||
         (localOption.choices?.length || 0) !==
           (existingOption.choices?.length || 0) ||
         areChoicesDifferent(

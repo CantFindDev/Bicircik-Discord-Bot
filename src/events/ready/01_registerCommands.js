@@ -4,149 +4,86 @@ const getLocalCommands = require('../../utils/getLocalCommands');
 const checkCommandDiffirience = require('../../utils/checkCommandDiffirience');
 const isCommandDisabled = require('../../utils/isCommandDisabled');
 
-module.exports = async (client) => {
+const GLOBAL_SCOPE = 'global';
 
-  async function safeDelete(commandsManager, commandId, commandName, scopeName = "", isSilent = false) {
-    try {
-      await commandsManager.delete(commandId);
-      if (!isSilent) console.log(`🗑️ Deleted ${scopeName} command: ${commandName}`);
-    } catch (error) {
-      if (error.code === 10063) {
-        console.log(`ℹ️ ${scopeName} command already deleted or not found: ${commandName}`);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  try {
-    const localCommands = getLocalCommands();
-
-    // Fetch current commands from all scopes
-    const globalCommands = await getApplicationCommands(client);
-    const testCommands = await getApplicationCommands(client, testGuild);
-    const mainCommands = await getApplicationCommands(client, mainGuild);
-
-    // Create maps for quick lookup of existing commands by name
-    const existingGlobalMap = new Map(globalCommands.cache.map(cmd => [cmd.name, cmd]));
-    const existingTestMap = new Map(testCommands.cache.map(cmd => [cmd.name, cmd]));
-    const existingMainMap = new Map(mainCommands.cache.map(cmd => [cmd.name, cmd]));
-
-    // For tracking which commands should exist in which scopes after sync
-    const shouldExistTest = new Set();
-    const shouldExistMain = new Set();
-    const shouldExistGlobal = new Set();
-
-    // First, iterate all local commands and add/edit them appropriately
-    for (const localCommand of localCommands) {
-      const { name, description, options, testOnly, mainOnly, deleted, memberPermissions, subcommandPermissions } = localCommand;
-
-      const default_member_permissions = Array.isArray(memberPermissions) && memberPermissions.length > 0
+/** Converts a local command to the payload Discord registers. */
+const toPayload = ({ name, description, options, memberPermissions }) => ({
+    name,
+    description,
+    options: options ?? [],
+    default_member_permissions: Array.isArray(memberPermissions) && memberPermissions.length > 0
         ? memberPermissions.reduce((acc, perm) => acc | BigInt(perm), 0n).toString()
-        : null;
+        : null,
+});
 
-      if (deleted || isCommandDisabled(name)) {
-        // Delete from all scopes if exists
-        if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
-        if (existingTestMap.has(name)) await safeDelete(testCommands, existingTestMap.get(name).id, name, "Test");
-        if (existingMainMap.has(name)) await safeDelete(mainCommands, existingMainMap.get(name).id, name, "Main");
+/**
+ * Sorts the local commands into the scope each one belongs to: global, or a guild id.
+ * `testOnly` goes to the test guild and `mainOnly` to the main guild. When both ids in the config are
+ * the same guild, they share one scope, so one never deletes what the other registered.
+ * @returns {Map<string, object[]>} scope to commands, with an entry for every scope even when it is empty
+ */
+const groupByScope = (localCommands) => {
+    const commandsByScope = new Map([[GLOBAL_SCOPE, []], [testGuild, []], [mainGuild, []]]);
+    const takenNames = new Set();
 
-        continue;
-      }
+    for (const command of localCommands) {
+        if (command.deleted || isCommandDisabled(command.name)) continue;
 
-      if (testOnly === true && mainOnly === true) {
-        console.log(`⚠️ Command "${name}" cannot be both testOnly and mainOnly. Skipping...`);
-        continue;
-      }
-
-      if (testOnly === true) {
-        shouldExistTest.add(name);
-        const existingTest = existingTestMap.get(name);
-        if (existingTest) {
-          const differs = checkCommandDiffirience(existingTest, localCommand);
-          if (differs) {
-            await testCommands.edit(existingTest.id, { description, options, default_member_permissions });
-            console.log(`🔄 Edited Test command: ${name}`);
-          } else {
-            console.log(`✅ Test command "${name}" is up to date. No edit needed.`);
-          }
-        } else {
-          await testCommands.create({ name, description, options, default_member_permissions });
-          console.log(`⚙️ Created Test command: ${name}`);
+        if (command.testOnly === true && command.mainOnly === true) {
+            console.log(`⚠️ Command "${command.name}" cannot be both testOnly and mainOnly. Skipping...`);
+            continue;
         }
-        // Ensure deleted from other scopes
-        if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
-        if (existingMainMap.has(name)) await safeDelete(mainCommands, existingMainMap.get(name).id, name, "Main");
 
-        continue;
-      }
+        const scope = command.testOnly ? testGuild : command.mainOnly ? mainGuild : GLOBAL_SCOPE;
+        const scopedName = `${scope}:${command.name}`;
 
-      if (mainOnly === true) {
-        shouldExistMain.add(name);
-        const existingMain = existingMainMap.get(name);
-        if (existingMain) {
-          const differs = checkCommandDiffirience(existingMain, localCommand);
-          if (differs) {
-            await mainCommands.edit(existingMain.id, { description, options, default_member_permissions });
-            console.log(`🔄 Edited Main command: ${name}`);
-          } else {
-            console.log(`✅ Main command "${name}" is up to date. No edit needed.`);
-          }
-        } else {
-          await mainCommands.create({ name, description, options, default_member_permissions });
-          console.log(`⚙️ Created Main command: ${name}`);
+        if (takenNames.has(scopedName)) {
+            console.log(`⚠️ Command "${command.name}" is defined twice for the same scope. Skipping the second one.`);
+            continue;
         }
-        // Ensure deleted from other scopes
-        if (existingGlobalMap.has(name)) await safeDelete(globalCommands, existingGlobalMap.get(name).id, name, "Global");
-        if (existingTestMap.has(name)) await safeDelete(testCommands, existingTestMap.get(name).id, name, "Test");
 
-        continue;
-      }
+        takenNames.add(scopedName);
+        commandsByScope.get(scope).push(command);
+    }
 
-      // Global command case
-      shouldExistGlobal.add(name);
-      const existingGlobal = existingGlobalMap.get(name);
-      if (existingGlobal) {
-        const differs = checkCommandDiffirience(existingGlobal, localCommand);
-        if (differs) {
-          await globalCommands.edit(existingGlobal.id, { description, options, default_member_permissions });
-          console.log(`🔄 Edited Global command: ${name}`);
-        } else {
-          console.log(`✅ Global command "${name}" is up to date. No edit needed.`);
+    return commandsByScope;
+};
+
+/** Reports whether the commands registered in a scope differ from the local ones. */
+const isOutOfDate = (existingCommands, localCommands) => {
+    if (existingCommands.size !== localCommands.length) return true;
+
+    const existingByName = new Map(existingCommands.map((command) => [command.name, command]));
+
+    return localCommands.some((localCommand) => {
+        const existing = existingByName.get(localCommand.name);
+        return !existing || checkCommandDiffirience(existing, localCommand);
+    });
+};
+
+/**
+ * Makes the commands registered on Discord match the local command files.
+ * Each scope is compared first and left alone when nothing changed. A scope that changed is replaced
+ * with one bulk request, instead of one request per command, which is what made startup slow and
+ * used up Discord's limit of 200 command creations per guild per day.
+ */
+module.exports = async (client) => {
+    try {
+        const commandsByScope = groupByScope(getLocalCommands());
+
+        for (const [scope, localCommands] of commandsByScope) {
+            const scopeName = scope === GLOBAL_SCOPE ? 'Global' : `Guild ${scope}`;
+            const manager = await getApplicationCommands(client, scope === GLOBAL_SCOPE ? undefined : scope);
+
+            if (!isOutOfDate(manager.cache, localCommands)) {
+                console.log(`✅ ${scopeName}: ${localCommands.length} commands are up to date.`);
+                continue;
+            }
+
+            await manager.set(localCommands.map(toPayload));
+            console.log(`🔄 ${scopeName}: registered ${localCommands.length} commands.`);
         }
-      } else {
-        await globalCommands.create({ name, description, options, default_member_permissions });
-        console.log(`🛠️ Created Global command: ${name}`);
-      }
+    } catch (error) {
+        console.log(`❌ Error while syncing commands: ${error.message}`);
     }
-
-    // Now remove duplicates after full processing
-
-    // Remove Test commands that should not exist (not testOnly)
-    for (const [name, cmd] of existingTestMap) {
-      if (!shouldExistTest.has(name)) {
-        await safeDelete(testCommands, cmd.id, name,"Test",true);
-        console.log(`🗑️ Removed Test duplicate of command: ${name}`);
-      }
-    }
-
-    // Remove Main commands that should not exist (not mainOnly)
-    for (const [name, cmd] of existingMainMap) {
-      if (!shouldExistMain.has(name)) {
-        await safeDelete(mainCommands, cmd.id, name,"Main",true);
-        console.log(`🗑️ Removed Main duplicate of command: ${name}`);
-      }
-    }
-
-    // Optionally, remove Global commands that should not exist
-    for (const [name, cmd] of existingGlobalMap) {
-      if (!shouldExistGlobal.has(name)) {
-        await safeDelete(globalCommands, cmd.id, name,"Global",true);
-        console.log(`🗑️ Removed Global duplicate of command: ${name}`);
-      }
-    }
-
-  } catch (error) {
-    console.log(`❌ Error while syncing commands: ${error.message}`);
-  }
 };
