@@ -1,4 +1,5 @@
 const { Client, Interaction, ApplicationCommandOptionType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
+const { getTranslator } = require('../../utils/language');
 const levelSchema = require('../../schemas/levelSchema');
 const canvacord = require('canvacord');
 const calculateLevelXp = require('../../utils/calculateLevelXp');
@@ -6,6 +7,7 @@ const calculateLevelXp = require('../../utils/calculateLevelXp');
 module.exports = {
     name: 'seviye',
     description: 'Seçilen kişinin aktif seviyesini ve sunucudaki sıralamasını gösterir',
+    aliases: [{ name: "level", description: "Shows a member's level and rank in the server.", language: 'en' }],
 
     mainOnly: true,
 
@@ -22,6 +24,7 @@ module.exports = {
      * @param {Interaction} interaction
      */
     callback: async (client, interaction) => {
+        const t = getTranslator(interaction);
         await interaction.deferReply({ ephemeral: true });
 
         const mentionUserID = interaction.options.get('hedef-kullanıcı')?.value;
@@ -31,7 +34,7 @@ module.exports = {
         const guildData = await levelSchema.findOne({ guildID: interaction.guild.id });
 
         if (!guildData || !Array.isArray(guildData.userLevels) || guildData.userLevels.length === 0) {
-            await interaction.editReply("Sunucuda şu anda kimsenin seviyesi bulunmamaktadır.");
+            await interaction.editReply(t('level.noLevels'));
             return;
         }
 
@@ -40,8 +43,8 @@ module.exports = {
         if (!fetchedLevel) {
             await interaction.editReply(
                 mentionUserID
-                    ? `${targetUserObj.user.tag} henüz seviye kazanmadı. Biraz daha sohbet edince tekrar deneyin!`
-                    : "Henüz seviyeniz bulunmamaktadır. Biraz daha sohbet edin ve tekrar deneyin!"
+                    ? t('level.noLevelOther', { user: targetUserObj.user.tag })
+                    : t('level.noLevelSelf')
             );
             return;
         }
@@ -59,9 +62,9 @@ module.exports = {
 
         const rank = new canvacord.RankCardBuilder()
             .setTextStyles({
-                level: "SEVİYE:",
-                xp: "XP:",
-                rank: "SIRALAMA:",
+                level: t('level.cardLevel'),
+                xp: t('level.cardXp'),
+                rank: t('level.cardRank'),
             })
             .setAvatar(
                 targetUserObj.user.displayAvatarURL({

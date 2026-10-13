@@ -4,13 +4,28 @@ const calculateLevelXp = require('../../utils/calculateLevelXp');
 const cooldowns = new Set();
 const signUpSettings = require('../../schemas/registrationSchema');
 const canvacord = require('canvacord');
+const { rollRewards, claimLevelRewards } = require('../../utils/levelRewards');
+const { formatCoins } = require('../../utils/economy');
+
+const XP_COOLDOWN_MS = 30000;
 
 function getRandomXP(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/**
+ * Gives chat XP once per XP_COOLDOWN_MS per member, and pays a coin reward when a rewarded level is reached.
+ * The cooldown is claimed before the first await, so two messages sent together are not both counted.
+ * The reward itself goes through claimLevelRewards, which never pays a level twice.
+ */
 module.exports = async (client, message) => {
     if (!message.inGuild() || message.author.bot) return;
+
+    const cooldownKey = `${message.guild.id}:${message.author.id}`;
+    if (cooldowns.has(cooldownKey)) return;
+
+    cooldowns.add(cooldownKey);
+    setTimeout(() => cooldowns.delete(cooldownKey), XP_COOLDOWN_MS).unref();
 
     const settings = await signUpSettings.findOne({ guildID: message.guild.id });
     if (settings && message.channel.id === settings.kayıtChannel) return;
@@ -41,13 +56,14 @@ module.exports = async (client, message) => {
             };
             guildData.userLevels.push(userData);
         } else {
-            if (cooldowns.has(message.author.id)) return;
-
             userData.xp += xpToGive;
 
             if (userData.xp >= calculateLevelXp(userData.level)) {
                 userData.xp = 0;
                 userData.level += 1;
+
+                await guildData.save();
+                const reward = await claimLevelRewards(message.guild.id, message.author.id, userData.level, rollRewards);
 
                 const allLevels = [...guildData.userLevels].sort((a, b) => {
                     if (a.level === b.level) return b.xp - a.xp;
@@ -89,7 +105,7 @@ module.exports = async (client, message) => {
 
                 if (levelChannel) {
                     await levelChannel.send({
-                        content: `${message.member}, **${userData.level}. seviyeye** ulaştınız!`,
+                        content: `${message.member}, **${userData.level}. seviyeye** ulaştınız!` + (reward > 0 ? ` Ödül: **${formatCoins(reward)}**` : ''),
                         files: [attachment]
                     });
                 }
@@ -98,10 +114,7 @@ module.exports = async (client, message) => {
 
         await guildData.save();
 
-        cooldowns.add(message.author.id);
-        setTimeout(() => cooldowns.delete(message.author.id), 30000);
-
     } catch (error) {
-        console.log(`XP verirken hata oluştu: ${error}`);
+        console.error('Failed to give XP:', error);
     }
 };
