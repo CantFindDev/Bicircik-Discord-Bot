@@ -4,6 +4,7 @@ const welcomerSchema = require('../../schemas/welcomerSchema');
 module.exports = {
     name: 'karşılayıcı',
     description: 'Giriş ve çıkış mesajlarını ayarla',
+    aliases: [{ name: 'welcomer', description: 'Sets up the welcome and goodbye messages' }],
 
     mainOnly: true,
 

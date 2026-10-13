@@ -14,6 +14,7 @@ const registrationModel = require('../../schemas/registrationSchema');
 module.exports = {
   name: 'kayıt',
   description: 'Kayıt sistemini ayarla veya sil',
+  aliases: [{ name: 'registration', description: 'Sets up or removes the registration system' }],
 
   mainOnly: true,
   

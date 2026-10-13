@@ -10,6 +10,7 @@ const {
 module.exports = {
   name: 'embed-mesaj',
   description: 'Embed mesaj gönderme komutu',
+  aliases: [{ name: 'embed-message', description: 'Sends an embed message' }],
 
   mainOnly: true,
 

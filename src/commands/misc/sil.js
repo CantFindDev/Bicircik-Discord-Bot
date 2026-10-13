@@ -10,6 +10,7 @@ const {
 module.exports = {
   name: 'sil',
   description: 'Mesajları veya kanalı temizler',
+  aliases: [{ name: 'clear', description: 'Clears messages or deletes a channel' }],
 
   mainOnly: true,
 

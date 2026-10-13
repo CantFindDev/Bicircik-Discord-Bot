@@ -5,6 +5,7 @@ const settingsSchema = require('../../schemas/settingsSchema');
 module.exports = {
     name: 'bilet-sistemi',
     description: 'bilet sistemi',
+    aliases: [{ name: 'ticket-system', description: 'Ticket system' }],
 
     mainOnly: true,
 

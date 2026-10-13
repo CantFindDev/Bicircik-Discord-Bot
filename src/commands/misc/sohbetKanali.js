@@ -4,6 +4,7 @@ const chatBotSchema = require('../../schemas/chatBotSchema');
 module.exports = {
     name: 'sohbet-kanalı',
     description: 'Sohbet botunun konuşabileceği kanalı ayarlar, kanal verilmezse her kanalda konuşur',
+    aliases: [{ name: 'chat-channel', description: 'Sets the channel the chat bot talks in. With no channel it talks everywhere' }],
 
     mainOnly: true,
 

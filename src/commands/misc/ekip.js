@@ -8,6 +8,7 @@ const LogBuilder = require("../../utils/logBuilder");
 module.exports = {
   name: 'ekip',
   description: 'Ekip yönetim sistemi',
+  aliases: [{ name: 'team', description: 'Team management system' }],
 
   options: [
     {

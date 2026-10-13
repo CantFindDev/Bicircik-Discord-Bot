@@ -4,6 +4,7 @@ const levelSchema = require('../../schemas/levelSchema');
 module.exports = {
     name: 'seviye-ayarla',
     description: 'Seviye yükseldiğinde mesajların gönderileceği kanalı ayarlamanızı sağlar',
+    aliases: [{ name: 'level-channel', description: 'Sets the channel that level-up messages are sent to' }],
     mainOnly: true,
     memberPermissions: [PermissionFlagsBits.Administrator],
 

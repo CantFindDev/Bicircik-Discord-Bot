@@ -58,6 +58,7 @@ function createRoleMessage(roles, guild, options) {
 module.exports = {
   name: 'rol-al',
   description: 'Rol alma sistemi',
+  aliases: [{ name: 'role-menu', description: 'Self-assignable role system' }],
 
   mainOnly: true,
 

@@ -9,6 +9,7 @@ const {
 module.exports = {
   name: 'rol-kaldır',
   description: 'Belirtilen rolü sunucudaki tüm üyelerden kaldırır',
+  aliases: [{ name: 'remove-role', description: 'Removes the given role from every member of the server' }],
 
   mainOnly: true,
 
@@ -53,7 +54,7 @@ module.exports = {
         basariSayisi++;
 
       } catch (error) {
-        console.error(`${uye.user.tag} kullanıcısından rol çıkarılamadı.`, error);
+        console.error(`Failed to remove the role from ${uye.user.tag}:`, error);
         hataSayisi++;
       }
     }
