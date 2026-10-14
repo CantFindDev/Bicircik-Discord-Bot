@@ -1,7 +1,7 @@
 require('dotenv/config');
 const fs = require('fs');
 const path = require('path');
-const { Client, Message } = require('discord.js');
+const { Client, Message, MessageFlags } = require('discord.js');
 const signUpSettings = require('../../schemas/registrationSchema');
 const chatBotSchema = require('../../schemas/chatBotSchema');
 const generateReply = require('../../utils/chatBotModels');
@@ -255,7 +255,7 @@ module.exports = async (client, message) => {
     // 2000 karakter sınırı için parçala ve gönder
     for (let i = 0; i < botMessage.length; i += 2000) {
       const chunk = botMessage.slice(i, i + 2000);
-      await message.reply(chunk);
+      await message.reply({ content: chunk, flags: MessageFlags.SuppressEmbeds });
     }
 
     conversation.push({
