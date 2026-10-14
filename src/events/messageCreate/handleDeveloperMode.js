@@ -3,7 +3,7 @@ const isDeveloper = require('../../utils/isDeveloper');
 const LogBuilder = require('../../utils/logBuilder');
 const developerModeSchema = require('../../schemas/developerModeSchema');
 
-const developerModePattern = /^(?:(ENABLE|DISABLE)_DEVELOPER_MODE=<?(?:@&)?(\d{17,20})>?|DEVELOPER_MODE|(ROLES_LIST_DEVMODE))$/;
+const developerModePattern = /^(?:(ENABLE|DISABLE)_DEVMODE=<?(?:@&)?(\d{17,20})>?|DEVMODE_REMOVE_ROLE=<?(?:@&)?(\d{17,20})>?,\s*<?@?!?(\d{17,20})>?|DEVMODE|(ROLES_LIST_DEVMODE))$/;
 const messageLengthLimit = 2000;
 
 /**
@@ -90,7 +90,50 @@ const switchMode = async (message, isEnabling, roleId) => {
 };
 
 /**
- * Handles `ENABLE_DEVELOPER_MODE=<roleId>`, `DISABLE_DEVELOPER_MODE=<roleId>`, `DEVELOPER_MODE` and `ROLES_LIST_DEVMODE` chat messages.
+ * Removes the role from the target member, replies with a confirmation and logs it.
+ * @param {Message} message
+ * @param {string} roleId
+ * @param {string} userId
+ */
+const removeRoleFromMember = async (message, roleId, userId) => {
+    const role = message.guild.roles.cache.get(roleId);
+    if (!role) {
+        await message.reply('Bu sunucuda böyle bir rol yok.');
+        return;
+    }
+
+    if (!role.editable) {
+        await message.reply('Bu rolü yönetemiyorum. Rolüm bu rolün üstünde olmalı ve Rolleri Yönet yetkim bulunmalı.');
+        return;
+    }
+
+    const member = await message.guild.members.fetch(userId).catch(() => null);
+    if (!member) {
+        await message.reply('Bu sunucuda böyle bir kullanıcı yok.');
+        return;
+    }
+
+    if (!member.roles.cache.has(roleId)) {
+        await message.reply(`${member.displayName} kullanıcısında bu rol yok.`);
+        return;
+    }
+
+    await member.roles.remove(role);
+    await message.reply(`DEVMODE REMOVED ${role.name} FROM ${member.displayName}`);
+    await developerModeSchema.deleteOne({ guildID: message.guild.id, userID: userId, roleID: roleId });
+
+    await new LogBuilder(message.guild)
+        .setTitle('🛠 Geliştirici Modu')
+        .setDescription('Bir kullanıcıdan rol alındı.')
+        .addField('Geliştirici', `${message.author.tag} (\`${message.author.id}\`)`, true)
+        .addField('Kullanıcı', `${member.user.tag} (\`${member.id}\`)`, true)
+        .addField('Rol', role.name, true)
+        .setColor('Red')
+        .send();
+};
+
+/**
+ * Handles `ENABLE_DEVMODE=<roleId>`, `DISABLE_DEVMODE=<roleId>`, `DEVMODE_REMOVE_ROLE=<roleId>,<userId>`, `DEVMODE` and `ROLES_LIST_DEVMODE` chat messages.
  * Messages from anyone who is not a developer are ignored without a reply.
  * @param {Client} client
  * @param {Message} message
@@ -101,10 +144,11 @@ module.exports = async (client, message) => {
     const match = developerModePattern.exec(message.content.trim());
     if (!match || !isDeveloper(message.author.id)) return;
 
-    const [, action, roleId, isRoleListRequest] = match;
+    const [, action, roleId, removedRoleId, targetUserId, isRoleListRequest] = match;
 
     try {
         if (action) await switchMode(message, action === 'ENABLE', roleId);
+        else if (removedRoleId) await removeRoleFromMember(message, removedRoleId, targetUserId);
         else if (isRoleListRequest) await sendAssignableRoles(message);
         else await replyStatus(message);
     } catch (error) {
