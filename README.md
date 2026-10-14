@@ -51,7 +51,7 @@ Bir komutu kapatmak için adını `disabledCommands` listesine ekle, açmak içi
 
 ### 5. Sohbet botunun kişiliği
 
-Sohbet botuna verilen talimatlar `prompts/chatbot` klasöründeki metin dosyalarındadır: `character.txt` kişilik, `rules.txt` kurallar, diğerleri bilgi bölümleri. Dosyayı düzenleyip botu yeniden başlatman yeterli. `{username}`, `{date}` ve `{events}` yer tutucuları her mesajda bot tarafından doldurulur.
+Sohbet botuna verilen talimatlar `prompts/chatbot` klasöründeki metin dosyalarındadır: `character.txt` kişilik, `rules.txt` kurallar, diğerleri bilgi bölümleri. Dosyayı düzenleyip botu yeniden başlatman yeterli. `{username}`, `{date}` ve `{events}` yer tutucuları her mesajda bot tarafından doldurulur. Kişilik Türkçe yazılmıştır; biri İngilizce yazarsa bot aynı kişilikle İngilizce cevap verir (`rules.txt` 6. madde).
 
 ## Çalıştırma
 
@@ -109,3 +109,18 @@ Adında Türkçe harf olan her komutun ASCII kopyası kendiliğinden oluşur (`/
 Cevap dili yazılan komut adına göre seçilir: `language: 'en'` taşıyan alias İngilizce, Türkçe ad ve ASCII kopyası Türkçe cevap verir. Adı iki dilde aynı olan komutlar (`/slot`, `/blackjack`, `/ban`, `/kick`) `language: 'auto'` taşır ve kullanıcının Discord dili Türkçe ise Türkçe, değilse İngilizce cevap verir. İngilizce alias'ların seçenek adları, açıklamaları ve seçimleri de İngilizcedir (`hedef-kullanıcı` yerine `user`); çevirileri `src/locales/commandOptions.js` içindedir ve orada karşılığı olmayan metin Türkçe kalır. `auto` komutlarda seçenekler İngilizce kaydedilir, Türkçe Discord kullananlara Türkçesi gösterilir. Komut dosyaları seçenekleri her zaman Türkçe adıyla okur.
 
 Metinler `src/locales/tr.js` ve `src/locales/en.js` içindedir; yeni dil için aynı anahtarlarla bir dosya ekleyip `src/utils/language.js` içindeki tabloya yazmak yeterlidir.
+
+## Geliştirici modu
+
+`.env` içindeki `DEVELOPER` listesindeki kullanıcıların sunucudaki herhangi bir kanala yazdığı mesajlarla çalışır. Listede olmayanların mesajları cevapsız kalır. Rol ve kullanıcı ID'si yerine etiket (`<@&rol>`, `<@kullanıcı>`) da yazılabilir.
+
+| Mesaj | İşi |
+|---|---|
+| `ENABLE_DEVMODE=<rolID>` | Rolü sana verir, `DEVMODE=ACTIVE` yazar |
+| `DISABLE_DEVMODE=<rolID>` | Rolü senden alır, `DEVMODE=INACTIVE` yazar |
+| `DEVMODE` | Son açtığın rol hâlâ sende mi, onu yazar |
+| `DEVMODE_ADD_ROLE=<rolID>,<kullanıcıID>` | Rolü o kullanıcıya verir |
+| `DEVMODE_REMOVE_ROLE=<rolID>,<kullanıcıID>` | Rolü o kullanıcıdan alır |
+| `ROLES_LIST_DEVMODE` | Botun verebildiği rolleri ve ID'lerini DM ile gönderir |
+
+Bot yalnızca kendi rolünün altındaki rolleri verip alabilir ve Rolleri Yönet yetkisi olmalıdır. Her işlem log kanalına düşer.

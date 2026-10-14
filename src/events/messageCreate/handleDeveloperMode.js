@@ -3,7 +3,7 @@ const isDeveloper = require('../../utils/isDeveloper');
 const LogBuilder = require('../../utils/logBuilder');
 const developerModeSchema = require('../../schemas/developerModeSchema');
 
-const developerModePattern = /^(?:(ENABLE|DISABLE)_DEVMODE=<?(?:@&)?(\d{17,20})>?|DEVMODE_REMOVE_ROLE=<?(?:@&)?(\d{17,20})>?,\s*<?@?!?(\d{17,20})>?|DEVMODE|(ROLES_LIST_DEVMODE))$/;
+const developerModePattern = /^(?:(ENABLE|DISABLE)_DEVMODE=<?(?:@&)?(\d{17,20})>?|DEVMODE_(ADD|REMOVE)_ROLE=<?(?:@&)?(\d{17,20})>?,\s*<?@?!?(\d{17,20})>?|DEVMODE|(ROLES_LIST_DEVMODE))$/;
 const messageLengthLimit = 2000;
 
 /**
@@ -90,12 +90,13 @@ const switchMode = async (message, isEnabling, roleId) => {
 };
 
 /**
- * Removes the role from the target member, replies with a confirmation and logs it.
+ * Adds the role to or removes it from the target member, replies with a confirmation and logs it.
  * @param {Message} message
+ * @param {boolean} isAdding
  * @param {string} roleId
  * @param {string} userId
  */
-const removeRoleFromMember = async (message, roleId, userId) => {
+const changeMemberRole = async (message, isAdding, roleId, userId) => {
     const role = message.guild.roles.cache.get(roleId);
     if (!role) {
         await message.reply('Bu sunucuda böyle bir rol yok.');
@@ -113,27 +114,32 @@ const removeRoleFromMember = async (message, roleId, userId) => {
         return;
     }
 
-    if (!member.roles.cache.has(roleId)) {
-        await message.reply(`${member.displayName} kullanıcısında bu rol yok.`);
+    if (member.roles.cache.has(roleId) === isAdding) {
+        await message.reply(`${member.displayName} kullanıcısında bu rol ${isAdding ? 'zaten var' : 'yok'}.`);
         return;
     }
 
-    await member.roles.remove(role);
-    await message.reply(`DEVMODE REMOVED ${role.name} FROM ${member.displayName}`);
-    await developerModeSchema.deleteOne({ guildID: message.guild.id, userID: userId, roleID: roleId });
+    if (isAdding) {
+        await member.roles.add(role);
+        await message.reply(`DEVMODE ADDED ${role.name} TO ${member.displayName}`);
+    } else {
+        await member.roles.remove(role);
+        await message.reply(`DEVMODE REMOVED ${role.name} FROM ${member.displayName}`);
+        await developerModeSchema.deleteOne({ guildID: message.guild.id, userID: userId, roleID: roleId });
+    }
 
     await new LogBuilder(message.guild)
         .setTitle('🛠 Geliştirici Modu')
-        .setDescription('Bir kullanıcıdan rol alındı.')
+        .setDescription(isAdding ? 'Bir kullanıcıya rol verildi.' : 'Bir kullanıcıdan rol alındı.')
         .addField('Geliştirici', `${message.author.tag} (\`${message.author.id}\`)`, true)
         .addField('Kullanıcı', `${member.user.tag} (\`${member.id}\`)`, true)
         .addField('Rol', role.name, true)
-        .setColor('Red')
+        .setColor(isAdding ? 'Green' : 'Red')
         .send();
 };
 
 /**
- * Handles `ENABLE_DEVMODE=<roleId>`, `DISABLE_DEVMODE=<roleId>`, `DEVMODE_REMOVE_ROLE=<roleId>,<userId>`, `DEVMODE` and `ROLES_LIST_DEVMODE` chat messages.
+ * Handles `ENABLE_DEVMODE=<roleId>`, `DISABLE_DEVMODE=<roleId>`, `DEVMODE_ADD_ROLE=<roleId>,<userId>`, `DEVMODE_REMOVE_ROLE=<roleId>,<userId>`, `DEVMODE` and `ROLES_LIST_DEVMODE` chat messages.
  * Messages from anyone who is not a developer are ignored without a reply.
  * @param {Client} client
  * @param {Message} message
@@ -144,11 +150,11 @@ module.exports = async (client, message) => {
     const match = developerModePattern.exec(message.content.trim());
     if (!match || !isDeveloper(message.author.id)) return;
 
-    const [, action, roleId, removedRoleId, targetUserId, isRoleListRequest] = match;
+    const [, action, roleId, memberAction, memberRoleId, targetUserId, isRoleListRequest] = match;
 
     try {
         if (action) await switchMode(message, action === 'ENABLE', roleId);
-        else if (removedRoleId) await removeRoleFromMember(message, removedRoleId, targetUserId);
+        else if (memberAction) await changeMemberRole(message, memberAction === 'ADD', memberRoleId, targetUserId);
         else if (isRoleListRequest) await sendAssignableRoles(message);
         else await replyStatus(message);
     } catch (error) {
