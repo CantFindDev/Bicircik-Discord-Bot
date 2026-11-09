@@ -3,6 +3,7 @@ const { Font } = require("canvacord");
 const { GreetingsCard } = require("../../utils/canvacord/greetingsCard.js");
 const welcomerSchema = require('../../schemas/welcomerSchema.js');
 const isRecentDuplicate = require('../../utils/isRecentDuplicate.js');
+const LogBuilder = require('../../utils/logBuilder.js');
 
 /**
  * @param {Client} client
@@ -34,6 +35,11 @@ module.exports = async (client, member) => {
         const attachment = new AttachmentBuilder(image);
 
         await welcomeChannel.send({ files: [attachment] });
+        await new LogBuilder(member.guild)
+            .setTitle("👋 Hoş Geldin Kartı Gönderildi")
+            .setDescription(`${user} için <#${welcomeChannel.id}> kanalına kart gönderildi`)
+            .setColor("Green")
+            .send();
         console.log(`Welcome card sent for ${user.tag}.`);
     } catch (error) {
         console.error("Failed to send the welcome card:", error);

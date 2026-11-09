@@ -1,5 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
+const os = require('os');
 const settingsSchema = require('../schemas/settingsSchema');
+
+/** Machine and process that sent the log, so a second bot copy running on the same token shows up in the log channel. */
+const SENDER_TAG = `${os.hostname()} (pid ${process.pid})`;
 
 class LogBuilder {
     constructor(guild) {
@@ -7,7 +11,7 @@ class LogBuilder {
         this.embed = new EmbedBuilder()
             .setTimestamp()
             .setFooter({
-                text: `${guild.name} • ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')}`,
+                text: `${guild.name} • ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')} • ${SENDER_TAG}`,
                 iconURL: guild.iconURL({ dynamic: true })
             });
     }

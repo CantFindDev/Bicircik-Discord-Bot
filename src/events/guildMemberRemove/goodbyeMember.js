@@ -3,6 +3,7 @@ const { Font } = require("canvacord");
 const { GreetingsCard } = require("../../utils/canvacord/greetingsCard.js");
 const welcomerSchema = require('../../schemas/welcomerSchema.js');
 const isRecentDuplicate = require('../../utils/isRecentDuplicate.js');
+const LogBuilder = require('../../utils/logBuilder.js');
 
 /**
  * @param {Client} client
@@ -33,4 +34,9 @@ module.exports = async (client, interaction) => {
     const attachment = new AttachmentBuilder(image);
 
     await goodbyeChannel.send({ files: [attachment] });
+    await new LogBuilder(interaction.guild)
+        .setTitle("👋 Görüşürüz Kartı Gönderildi")
+        .setDescription(`${user} için <#${goodbyeChannel.id}> kanalına kart gönderildi`)
+        .setColor("Red")
+        .send();
 };
